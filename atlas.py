@@ -59,13 +59,37 @@ class PingMeasurment(Measurment):
         Measurment.__init__(self, probe_id, payload)
         self.avg_rtt = self.payload[0]
 
-    def check_rtt(self, min_rtt, results):
-        if self.avg_rtt < min_rtt:
-            results['ok'].append(self.msg % (self.probe_id, "rtt", self.avg_rtt))
+    def check_rtt(self, check_type, rtt, results):
+        msg = "%s: desierd (%s), real (%s)" % (check_type, rtt, self.avg_rtt)
+        if self.avg_rtt < rtt:
+            results['ok'].append(self.msg % (self.probe_id, msg, self.avg_rtt))
         else:
-            results['error'].append(self.msg % (self.probe_id, "rtt", self.avg_rtt))
+            results['error'].append(self.msg % (self.probe_id, msg, self.avg_rtt))
 
     def check(self, nagios_args, results):
         Measurment.check(self, nagios_args, results)
-        if 'min_rtt' in nagios_args:
-            self.check_rtt(nagios_args['min_rtt'], results)
+        for check_type, rtt in nagios_args['rtt'].iteritems():
+            self.check_rtt(check_type, rtt, results) 
+
+class HttpMeasurment(Measurment):
+    def __init__(self, probe_id, payload):
+        #super(Measurment, self).__init__(self, payload)
+        Measurment.__init__(self, probe_id, payload)
+        try:
+            self.status = self.payload[2][0]['res']
+        except KeyError as error:
+            #probably a time out, should use a better status code
+            self.status = 500
+
+    def check_status(self, check_status, results):
+        msg = "%s: desierd (%s), real (%s)" % (check_type, rtt, self.status)
+        if self.status == check_status:
+            results['ok'].append(self.msg % (self.probe_id, msg, self.status))
+        else:
+            results['error'].append(self.msg % (self.probe_id, msg, self.status))
+
+    def check(self, nagios_args, results):
+        Measurment.check(self, nagios_args, results)
+        if 'status_code' in nagios_args['status_code']:
+            self.check_status(nagios_args['status_code'], results)
+
