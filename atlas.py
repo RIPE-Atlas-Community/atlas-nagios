@@ -82,7 +82,7 @@ class HttpMeasurment(Measurment):
             self.status = 500
 
     def check_status(self, check_status, results):
-        msg = "%s: desierd (%s), real (%s)" % (check_type, rtt, self.status)
+        msg = "%s: desierd (%s), real (%s)" % (self.probe_id, check_status, self.status)
         if self.status == check_status:
             results['ok'].append(self.msg % (self.probe_id, msg, self.status))
         else:
@@ -90,6 +90,6 @@ class HttpMeasurment(Measurment):
 
     def check(self, nagios_args, results):
         Measurment.check(self, nagios_args, results)
-        if 'status_code' in nagios_args['status_code']:
+        if 'status_code' in nagios_args:
             self.check_status(nagios_args['status_code'], results)
 
