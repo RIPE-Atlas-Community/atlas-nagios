@@ -60,11 +60,11 @@ class PingMeasurment(Measurment):
         self.avg_rtt = self.payload[0]
 
     def check_rtt(self, check_type, rtt, results):
-        msg = "%s: desierd (%s), real (%s)" % (check_type, rtt, self.avg_rtt)
+        msg = "desierd (%s), real (%s)" % (rtt, self.avg_rtt)
         if self.avg_rtt < rtt:
-            results['ok'].append(self.msg % (self.probe_id, msg, self.avg_rtt))
+            results['ok'].append(self.msg % (self.probe_id, msg, "Ping %s" % check_type))
         else:
-            results['error'].append(self.msg % (self.probe_id, msg, self.avg_rtt))
+            results['error'].append(self.msg % (self.probe_id, msg, "Ping %s" % check_type))
 
     def check(self, nagios_args, results):
         Measurment.check(self, nagios_args, results)
@@ -84,12 +84,83 @@ class HttpMeasurment(Measurment):
     def check_status(self, check_status, results):
         msg = "%s: desierd (%s), real (%s)" % (self.probe_id, check_status, self.status)
         if self.status == check_status:
-            results['ok'].append(self.msg % (self.probe_id, msg, self.status))
+            results['ok'].append(self.msg % (self.probe_id, msg, "HTTP Status Code"))
         else:
-            results['error'].append(self.msg % (self.probe_id, msg, self.status))
+            results['error'].append(self.msg % (self.probe_id, msg, "HTTP Status Code"))
 
     def check(self, nagios_args, results):
         Measurment.check(self, nagios_args, results)
         if 'status_code' in nagios_args:
             self.check_status(nagios_args['status_code'], results)
 
+class DnsAnswer:
+    def __init__(self, probe_id, answer):
+        self.answer = answer
+        self.probe_id = probe_id
+        self.msg = "Probe (%s): %s (%s)" 
+
+    def check_string(self, check_type, measurment_string, check_string, results):
+        if check_string == measurment_string:
+            results['ok'].append(self.msg % (self.probe_id, check_type, measurment_string))
+        else:
+            results['error'].append(self.msg % (self.probe_id, check_type, measurment_string))
+
+    def check(self, nagios_args, results):
+        raise NotImplementedError("Subclasses should implement this!")
+
+class SoaAnswer(DnsAnswer):
+    def __init__(self, probe_id, answer):
+        DnsAnswer.__init__(self, probe_id, answer)
+
+        if "SOA" in self.answer:
+            self.qname, self.ttl, _,  self.rrtype, self.mname, self.rname, self.serial, self.refresh, \
+                self.update, self.expire, self.nxdomain = answer.split()
+        else:
+            #i think the only other posibility is CNAME?
+            _, _, _, self.rrtype, _ = self.answer.split(None,5)
+
+    def check(self, nagios_args, results):
+        if self.rrtype != "SOA": 
+            results['error'].append(self.msg % (self.probe_id, "Answer is not SOA", self.rrtype))
+            return
+        for check_type, value in nagios_args['soa'].iteritems():
+            if value != None:
+                self.check_string(check_type, value, getattr(self, check_type), results) 
+
+class DnsMeasurment(Measurment):
+    def __init__(self, probe_id, payload):
+        #super(Measurment, self).__init__(self, payload)
+        Measurment.__init__(self, probe_id, payload)
+        self.additional = self.payload[2]['additional']
+        self.question = { 'qname': "", 'qtype': "", 'question':"" }
+        self.question['qname'], _, self.question['qtype'] = self.payload[2]['question'].split()
+        self.authority = self.payload[2]['authority']
+        self.rcode = self.payload[2]['rcode']
+        self.flags = self.payload[2]['flags']
+        self.answer = {
+            "SOA": SoaAnswer,
+        }.get(self.question['qtype'], DnsAnswer)(self.probe_id, self.payload[2]['answer'])
+
+    def check_rcode(self, rcode, results):
+        msg = "desierd (%s), real (%s)" % ( rcode, self.rcode)
+        if self.rcode == rcode:
+            results['ok'].append(self.msg % (self.probe_id, msg, "DNS RCODE"))
+        else:
+            results['error'].append(self.msg % (self.probe_id, msg, "DNS RCODE"))
+    def check_flags(self, flags, flag_requierd, resultsi):
+        if flag_requierd not in flags:
+            msg = "Missing flag: %s" % ( flag_requierd)
+            print msg
+
+    def check(self, nagios_args, results):
+        Measurment.check(self, nagios_args, results)
+        if 'rcode' in nagios_args:
+            self.check_rcode(nagios_args['rcode'], results)
+        if 'flags' in nagios_args:
+            for flag in nagios_args['flags'].split():
+                if flag in self.flags.split(): 
+                    results['ok'].append(self.msg % (self.probe_id, "Flag found", flag))
+                else:
+                    results['error'].append(self.msg % (self.probe_id, "Flag Missing ", flag))
+
+        self.answer.check(nagios_args, results)
