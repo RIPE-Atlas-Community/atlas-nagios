@@ -2,14 +2,17 @@
 import atlas
 import urllib2
 import json
+import sys
 
 class JsonRequest(urllib2.Request):
+    '''Object to make a Json HTTP request'''
     def __init__(self, url):
         urllib2.Request.__init__(self, url)
         self.add_header("Content-Type", "application/json")
         self.add_header("Accept", "application/json")
 
 def get_response (url):
+    '''Fetch a Json Object from url'''
     print url
     request = JsonRequest(url)
     try:
@@ -17,20 +20,25 @@ def get_response (url):
         json_data = json.load(conn)
         conn.close()
         return json_data
-    except urllib2.HTTPError as e:
-       print "Unknown: Fatal error when reading results (%s): %s, Status: %s" % (e.code, e.read(), status)
-       sys.exit(3)
+    except urllib2.HTTPError as error:
+        print '''Unknown: Fatal error when reading request 
+                (%s): %s''' % (error.code, error.read())
+        sys.exit(3)
 
 def get_measurements( measurement_id):
-    url = "https://atlas.ripe.net/api/v1/measurement/%s/latest/" % measurement_id
+    '''Fetch a measuerment with it=measurement_id'''
+    url = "https://atlas.ripe.net/api/v1/measurement/%s/latest/" \
+            % measurement_id
     return get_response(url)
 
-def parse_measurements(measurements, measurement_type, results):
+def parse_measurements(measurements, measurement_type, nagios_message):
+    '''Parse the measuerment'''
     parsed_measurements = []
     for measurement in measurements:
         probe_id = measurement[1]
         if measurement[5] == None:
-            results['error'].append("Probe (%s) has no results" % (probe_id))
+            nagios_message.add_error(
+                    "Probe (%s) has no nagios_message" % (probe_id))
             continue
         parsed_measurements.append(
             {
@@ -47,12 +55,14 @@ def parse_measurements(measurements, measurement_type, results):
         #parsed_measurements.append(SSLcertMeasurment(probe_id, measurement[5]))
     return parsed_measurements 
 
-def check_measurements(measurements, nagios_args, results):
+def check_measurements(measurements, nagios_args, nagios_message):
+    '''check the measuerment'''
     for measurement in measurements:
-        measurement.check(nagios_args, results)
+        measurement.check(nagios_args, nagios_message)
 
 def main():
-    results = { 'ok': [], 'warn': [], 'error': [] }
+    '''main rutine'''
+    nagios_message = atlas.NagiosMessage(2)
     ssl_measurement_id = 1010510
     ssl6_measurement_id = 1004237
     ping_measurement_id = 1000002
@@ -92,7 +102,7 @@ def main():
     measurement_type = 'http'
     measurement_type = 'dns'
     measurements =  get_measurements(measurement_id)
-    parsed_measurements = parse_measurements(measurements, measurement_type, results)
-    check_measurements(parsed_measurements, nagios_args, results)
-    print "'%s'" % json.dumps(results)
+    parsed_measurements = parse_measurements(measurements, measurement_type, nagios_message)
+    check_measurements(parsed_measurements, nagios_args, nagios_message)
+    nagios_message.exit()
 main()
