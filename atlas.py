@@ -1,70 +1,6 @@
 #!/usr/bin/env python
 """ Class to use the ripe atlas platform to do nagios checks """
-import time, sys 
-import argparse
-
-def arg_parse():
-    """Parse arguments"""
-    parser = argparse.ArgumentParser(description=__doc__)
-    subparsers = parser.add_subparsers(help='nagios check type')
-
-    #measuerement types
-    parser_ssl = subparsers.add_parser('ssl', help='SSL check')
-    parser_http = subparsers.add_parser('http', help='HTTP check')
-    parser_ping = subparsers.add_parser('ping', help='Ping check')
-    parser_dns = subparsers.add_parser('dns', help='DNS check')
-
-    #ssl args
-    parser_ssl.add_argument("measurement_id",
-            help="Measuerment ID to check")
-    parser_ssl.add_argument('--max_measurement_age', type=int,
-            help='The max age of a measuerment in unix time')
-    parser_ssl.add_argument('--common_name',
-            help='Ensure a cert has this cn')
-    parser_ssl.add_argument('--sslexpiry',
-            help="Ensure certificate dosne't expire in x days")
-    parser_ssl.add_argument('--sha1hash',
-            help="Ensure certificate has this sha1 hash")
-    #Ping args
-    parser_ping.add_argument("measurement_id",
-            help="Measuerment ID to check")
-    parser_ping.add_argument('--max_measurement_age', type=int,
-            help='The max age of a measuerment in unix time')
-    parser_ping.add_argument('--rtt_max',
-            help='Ensure the max ttl is below this')
-    parser_ping.add_argument('--rtt_min',
-            help='Ensure the min ttl is below this')
-    parser_ping.add_argument('--rtt_avg',
-            help='Ensure the avg ttl is below this')
-    #HTTP args
-    parser_http.add_argument("measurement_id", help="Measuerment ID to check")
-    parser_http.add_argument('--max_measurement_age', type=int,
-            help='The max age of a measuerment in unix time')
-    parser_http.add_argument('--status_code',
-            help='Ensure the site returns this status code')
-    #DNS args
-    subparsers_dns = parser_dns.add_subparsers(help='dns check type')
-    parser_dns_soa = subparsers_dns.add_parser('soa', help='soa check')
-
-    #DNS SOA OPTIONS
-    parser_dns_soa.add_argument("measurement_id", help="Measuerment ID to check")
-    parser_dns_soa.add_argument('--max_measurement_age', type=int,
-            help='The max age of a measuerment in unix time')
-    parser_dns_soa.add_argument('--mname',
-            help='Ensure the soa has this mname')
-    parser_dns_soa.add_argument('--rname',
-            help='Ensure the soa has this rname')
-    parser_dns_soa.add_argument('--serial',
-            help='Ensure the soa has this serial')
-    parser_dns_soa.add_argument('--refresh',
-            help='Ensure the soa has this refresh')
-    parser_dns_soa.add_argument('--update',
-            help='Ensure the soa has this update')
-    parser_dns_soa.add_argument('--expire',
-            help='Ensure the soa has this expire')
-    parser_dns_soa.add_argument('--nxdomain',
-            help='Ensure the soa has this nxdomain')
-    return parser.parse_args()
+import time, sys, argparse, urllib2, json
 
 class NagiosMessage:
     """Object to store nagios messages"""
@@ -96,6 +32,12 @@ class NagiosMessage:
             if self.verbose > 0:
                 print "ERROR: %d: %s" % (len(self.error),
                         ", ".join(self.error))
+                if self.verbose > 1:
+                    print "WARN: %d: %s" % (len(self.warn),
+                            ", ".join(self.warn))
+                    print "OK: %d: %s" % (len(self.ok),
+                        ", ".join(self.ok))
+
             else:
                 print "ERROR: %d" % len(self.error)
             sys.exit(2)
@@ -103,6 +45,9 @@ class NagiosMessage:
             if self.verbose > 0:
                 print "WARN: %d: %s" % (len(self.warn),
                         ", ".join(self.warn))
+                if self.verbose > 1:
+                    print "OK: %d: %s" % (len(self.ok),
+                        ", ".join(self.ok))
             else:
                 print "WARN: %d" % len(self.warn)
             sys.exit(1)
@@ -111,7 +56,7 @@ class NagiosMessage:
                 print "OK: %d: %s" % (len(self.ok),
                     ", ".join(self.ok))
             else:
-                print "OK: %d zones working" % len(self.ok)
+                print "OK: %d" % len(self.ok)
             sys.exit(0)
 
 class Measurment: 
@@ -145,11 +90,11 @@ class Measurment:
             nagios_message.add_error(self.msg % \
                      (self.probe_id, check_type, measurment_string))
 
-    def check(self, nagios_args, nagios_message):             
+    def check(self, args, nagios_message):             
         """main check fucntion"""
-        if 'max_measurement_age' in nagios_args:
+        if args.max_measurement_age != False:
             self.check_measurement_age(
-                    nagios_args['max_measurement_age'], nagios_message)
+                    args.max_measurement_age, nagios_message)
 
 class SSLcertMeasurment(Measurment):
     """Object for an atlas SSL Measurment"""
@@ -178,17 +123,17 @@ class SSLcertMeasurment(Measurment):
             nagios_message.add_ok(self.msg % (
                     self.probe_id, "certificate expiry good", expiry_str))
 
-    def check(self, nagios_args, nagios_message):
+    def check(self, args, nagios_message):
         """Main SSL check routine"""
-        Measurment.check(self, nagios_args, nagios_message)
-        if 'sha1hash' in nagios_args:
-            self.check_string( nagios_args['sha1hash'], 
+        Measurment.check(self, args, nagios_message)
+        if args.sha1hash:
+            self.check_string( args.sha1hash, 
                     self.sha1, 'sha1hash', nagios_message)
-        if 'common_name' in nagios_args:
-            self.check_string( nagios_args['common_name'], 
+        if args.common_name:
+            self.check_string( args.common_name, 
                     self.common_name, 'cn', nagios_message)
-        if nagios_args['check_expiry'] and 'warn_expiry' in nagios_args:
-            self.check_expiry(nagios_args['warn_expiry'], nagios_message)
+        if args.sslexpiry:
+            self.check_expiry(args.sslexpiry, nagios_message)
 
 class PingMeasurment(Measurment):
     """Object for an atlas Ping Measurment"""
@@ -209,11 +154,18 @@ class PingMeasurment(Measurment):
             nagios_message.add_error(self.msg % (
                     self.probe_id, msg, "Ping %s" % check_type))
 
-    def check(self, nagios_args, nagios_message):
+    def check(self, args, nagios_message):
         """Main ping check routine"""
-        Measurment.check(self, nagios_args, nagios_message)
-        for check_type, rtt in nagios_args['rtt'].iteritems():
-            self.check_rtt(check_type, rtt, nagios_message) 
+        Measurment.check(self, args, nagios_message)
+
+        if args.rtt_min:
+            self.check_rtt("min", args.rtt_min, nagios_message) 
+        if args.rtt_max:
+            self.check_rtt("max", args.rtt_max, nagios_message) 
+        if args.rtt_avg:
+            self.check_rtt("avg", args.rtt_avg, nagios_message) 
+
+
 
 class HttpMeasurment(Measurment):
     """Object for an atlas HTTP Measurment"""
@@ -225,25 +177,32 @@ class HttpMeasurment(Measurment):
         try:
             self.status = self.payload[2][0]['res']
         except KeyError:
-            #probably a time out, should use a better status code
-            self.status = 500
+            try:
+                self.status = self.payload[2][0]['dnserr']
+            except KeyError:
+                #probably a time out, should use a better status code
+                self.status = 500
 
     def check_status(self, check_status, nagios_message):
         """check the HTTP status is the same as check_status"""
         msg = "%s: desierd (%s), real (%s)" % \
                 (self.probe_id, check_status, self.status)
-        if self.status == check_status:
-            nagios_message.add_ok(self.msg % (
-                    self.probe_id, msg, "HTTP Status Code"))
-        else:
+        try:
+            if int(self.status) == int(check_status):
+                nagios_message.add_ok(self.msg % (
+                        self.probe_id, msg, "HTTP Status Code"))
+            else:
+                nagios_message.add_error(self.msg % (
+                        self.probe_id, msg, "HTTP Status Code"))
+        except ValueError:
             nagios_message.add_error(self.msg % (
                     self.probe_id, msg, "HTTP Status Code"))
 
-    def check(self, nagios_args, nagios_message):
+    def check(self, args, nagios_message):
         """Main HTTP check routine"""
-        Measurment.check(self, nagios_args, nagios_message)
-        if 'status_code' in nagios_args:
-            self.check_status(nagios_args['status_code'], nagios_message)
+        Measurment.check(self, args, nagios_message)
+        if args.status_code:
+            self.check_status(args.status_code, nagios_message)
 
 class DnsAnswer:
     """Parent class to hold dns measuerment payloads"""
@@ -264,7 +223,7 @@ class DnsAnswer:
             nagios_message.add_error(
                     self.msg % (self.probe_id, check_type, measurment_string))
 
-    def check(self, nagios_args, nagios_message):
+    def check(self, args, nagios_message):
         """Main Check routine"""
         raise NotImplementedError("Subclasses should implement this!")
 
@@ -281,16 +240,15 @@ class SoaAnswer(DnsAnswer):
             #print self.answer
             _, _, _, self.rrtype, _ = self.answer.split(None, 5)
 
-    def check(self, nagios_args, nagios_message):
+    def check(self, args, nagios_message):
         """Main Check routine"""
         if self.rrtype != "SOA": 
             nagios_message.add_error(self.msg % (
                     self.probe_id, "Answer is not SOA", self.rrtype))
             return
-        for check_type, value in nagios_args['soa'].iteritems():
-            if value != None:
-                self.check_string(check_type, value, 
-                        getattr(self, check_type), nagios_message) 
+        if args.mname:
+            self.check_string("mname", self.mname, args.mname, nagios_message) 
+
 
 class DnsMeasurment(Measurment):
     """Parent class for a dns measuerment"""
@@ -333,13 +291,150 @@ class DnsMeasurment(Measurment):
                 nagios_message.add_error(self.msg % (
                         self.probe_id, "Flag Missing ", flag))
 
-    def check(self, nagios_args, nagios_message):
+    def check(self, args, nagios_message):
         """Main Check routine"""
-        Measurment.check(self, nagios_args, nagios_message)
-        if 'rcode' in nagios_args:
-            self.check_rcode(nagios_args['rcode'], nagios_message)
-        if 'flags' in nagios_args:
-            self.check_flags(nagios_args['flags'], nagios_message)
+        Measurment.check(self, args, nagios_message)
+        if 'rcode' in args:
+            self.check_rcode(args['rcode'], nagios_message)
+        if 'flags' in args:
+            self.check_flags(args['flags'], nagios_message)
 
         if self.rcode == "NOERROR":
-            self.answer.check(nagios_args, nagios_message)
+            self.answer.check(args, nagios_message)
+
+class JsonRequest(urllib2.Request):
+    '''Object to make a Json HTTP request'''
+    def __init__(self, url):
+        urllib2.Request.__init__(self, url)
+        self.add_header("Content-Type", "application/json")
+        self.add_header("Accept", "application/json")
+
+def get_response (url):
+    '''Fetch a Json Object from url'''
+    #print url
+    request = JsonRequest(url)
+    try:
+        conn = urllib2.urlopen(request)
+        json_data = json.load(conn)
+        conn.close()
+        return json_data
+    except urllib2.HTTPError as error:
+        print '''Unknown: Fatal error when reading request
+                (%s): %s''' % (error.code, error.read())
+        sys.exit(3)
+
+def get_measurements( measurement_id):
+    '''Fetch a measuerment with it=measurement_id'''
+    url = "https://atlas.ripe.net/api/v1/measurement/%s/latest/" \
+            % measurement_id
+    return get_response(url)
+
+def parse_measurements(measurements, measurement_type, nagios_message):
+    '''Parse the measuerment'''
+    parsed_measurements = []
+    for measurement in measurements:
+        probe_id = measurement[1]
+        if measurement[5] == None:
+            nagios_message.add_error(
+                    "Probe (%s) has no data" % (probe_id))
+            continue
+        parsed_measurements.append(
+            {
+                'dns': DnsMeasurment,
+                'http': HttpMeasurment,
+                'ping': PingMeasurment,
+                'ssl': SSLcertMeasurment,
+            }.get(measurement_type, Measurment)(probe_id, measurement[5])
+        )
+        #parsed_measurements.append(SSLcertMeasurment(probe_id, measurement[5]))
+    return parsed_measurements
+
+def check_measurements(measurements, args, nagios_message):
+    '''check the measuerment'''
+    for measurement in measurements:
+        measurement.check(args, nagios_message)
+
+def arg_parse():
+    """Parse arguments"""
+    parser = argparse.ArgumentParser(description=__doc__)
+    subparsers = parser.add_subparsers( 
+            title="Supported Measuerment types", dest='name')
+
+    #measuerement types
+    parser_ssl = subparsers.add_parser('ssl', help='SSL check')
+    parser_http = subparsers.add_parser('http', help='HTTP check')
+    parser_ping = subparsers.add_parser('ping', help='Ping check')
+    parser_dns = subparsers.add_parser('dns', help='DNS check')
+
+    #ssl args
+    parser_ssl.add_argument('-v', '--verbose', action='count',
+            help='increase verbosity')
+    parser_ssl.add_argument("measurement_id",
+            help="Measuerment ID to check")
+    parser_ssl.add_argument('--max_measurement_age', type=int, default=30,
+            help='The max age of a measuerment in unix time')
+    parser_ssl.add_argument('--common_name',
+            help='Ensure a cert has this cn')
+    parser_ssl.add_argument('--sslexpiry', type=int, default=30,
+            help="Ensure certificate dosne't expire in x days")
+    parser_ssl.add_argument('--sha1hash',
+            help="Ensure certificate has this sha1 hash")
+    #Ping args
+    parser_ping.add_argument('-v', '--verbose', action='count',
+            help='increase verbosity')
+    parser_ping.add_argument("measurement_id",
+            help="Measuerment ID to check")
+    parser_ping.add_argument('--max_measurement_age', type=int, default=30,
+            help='The max age of a measuerment in unix time')
+    parser_ping.add_argument('--rtt_max',
+            help='Ensure the max ttl is below this')
+    parser_ping.add_argument('--rtt_min',
+            help='Ensure the min ttl is below this')
+    parser_ping.add_argument('--rtt_avg',
+            help='Ensure the avg ttl is below this')
+    #HTTP args
+    parser_http.add_argument('-v', '--verbose', action='count',
+            help='increase verbosity')
+    parser_http.add_argument("measurement_id", help="Measuerment ID to check")
+    parser_http.add_argument('--max_measurement_age', type=int, default=30,
+            help='The max age of a measuerment in unix time')
+    parser_http.add_argument('--status_code', type=int, default=200,
+            help='Ensure the site returns this status code')
+    #DNS args
+    subparsers_dns = parser_dns.add_subparsers(
+            title='Supported DNS checks', dest='name')
+    parser_dns_soa = subparsers_dns.add_parser('soa', help='soa check')
+
+    #DNS SOA OPTIONS
+    parser_dns_soa.add_argument('-v', '--verbose', action='count',
+            help='increase verbosity')
+    parser_dns_soa.add_argument("measurement_id", help="Measuerment ID to check")
+    parser_dns_soa.add_argument('--max_measurement_age', type=int, default=30,
+            help='The max age of a measuerment in unix time')
+    parser_dns_soa.add_argument('--mname',
+            help='Ensure the soa has this mname')
+    parser_dns_soa.add_argument('--rname',
+            help='Ensure the soa has this rname')
+    parser_dns_soa.add_argument('--serial',
+            help='Ensure the soa has this serial')
+    parser_dns_soa.add_argument('--refresh',
+            help='Ensure the soa has this refresh')
+    parser_dns_soa.add_argument('--update',
+            help='Ensure the soa has this update')
+    parser_dns_soa.add_argument('--expire',
+            help='Ensure the soa has this expire')
+    parser_dns_soa.add_argument('--nxdomain',
+            help='Ensure the soa has this nxdomain')
+    return parser.parse_args()
+
+def main():
+    """main function"""
+    args = arg_parse()
+    nagios_message = NagiosMessage(args.verbose)
+    measurements =  get_measurements(args.measurement_id)
+    parsed_measurements = parse_measurements(
+            measurements, args.name, nagios_message)
+    check_measurements(parsed_measurements, args, nagios_message)
+    nagios_message.exit()
+if __name__ == '__main__':
+    main()

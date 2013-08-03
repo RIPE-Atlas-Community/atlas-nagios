@@ -67,16 +67,16 @@ def main():
     ssl6_measurement_id = 1004237
     ping_measurement_id = 1000002
     ping6_measurement_id = 1003985
-    http_measurement_id = 1003951
+    http_measurement_id = 1015650
     http6_measurement_id = 1003930
     dns_measurement_id = 1012167
-#    dns_measurement_id = 1012172
+    dns_measurement_id = 1012172
     dns6_measurement_id = 1004048
-    measurement_id = dns_measurement_id
+    measurement_id = http_measurement_id
     nagios_args = {}
     nagios_args['sha1hash'] = "C62995469F6F81B576012F3C7EF674E03DBC630483E2D278455EAF2F2C70A06E"
     nagios_args['common_name'] = "*.facebook.com"
-    nagios_args['max_measurement_age'] = 30
+    nagios_args['max_measurement_age'] = 10000000000000
     nagios_args['check_expiry'] = True
     nagios_args['status_code'] = '200'
 
@@ -100,7 +100,7 @@ def main():
     measurement_type = 'sslcert'
     measurement_type = 'ping'
     measurement_type = 'http'
-    measurement_type = 'dns'
+#    measurement_type = 'dns'
     measurements =  get_measurements(measurement_id)
     parsed_measurements = parse_measurements(measurements, measurement_type, nagios_message)
     check_measurements(parsed_measurements, nagios_args, nagios_message)
