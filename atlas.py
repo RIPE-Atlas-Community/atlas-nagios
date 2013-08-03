@@ -6,8 +6,6 @@ import argparse
 def arg_parse():
     """Parse arguments"""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--max_measurement_age', type=int,
-            help='The max age of a measuerment in unix time')
     subparsers = parser.add_subparsers(help='nagios check type')
 
     #measuerement types
@@ -17,6 +15,10 @@ def arg_parse():
     parser_dns = subparsers.add_parser('dns', help='DNS check')
 
     #ssl args
+    parser_ssl.add_argument("measurement_id",
+            help="Measuerment ID to check")
+    parser_ssl.add_argument('--max_measurement_age', type=int,
+            help='The max age of a measuerment in unix time')
     parser_ssl.add_argument('--common_name',
             help='Ensure a cert has this cn')
     parser_ssl.add_argument('--sslexpiry',
@@ -24,6 +26,10 @@ def arg_parse():
     parser_ssl.add_argument('--sha1hash',
             help="Ensure certificate has this sha1 hash")
     #Ping args
+    parser_ping.add_argument("measurement_id",
+            help="Measuerment ID to check")
+    parser_ping.add_argument('--max_measurement_age', type=int,
+            help='The max age of a measuerment in unix time')
     parser_ping.add_argument('--rtt_max',
             help='Ensure the max ttl is below this')
     parser_ping.add_argument('--rtt_min',
@@ -31,6 +37,9 @@ def arg_parse():
     parser_ping.add_argument('--rtt_avg',
             help='Ensure the avg ttl is below this')
     #HTTP args
+    parser_http.add_argument("measurement_id", help="Measuerment ID to check")
+    parser_http.add_argument('--max_measurement_age', type=int,
+            help='The max age of a measuerment in unix time')
     parser_http.add_argument('--status_code',
             help='Ensure the site returns this status code')
     #DNS args
@@ -38,6 +47,9 @@ def arg_parse():
     parser_dns_soa = subparsers_dns.add_parser('soa', help='soa check')
 
     #DNS SOA OPTIONS
+    parser_dns_soa.add_argument("measurement_id", help="Measuerment ID to check")
+    parser_dns_soa.add_argument('--max_measurement_age', type=int,
+            help='The max age of a measuerment in unix time')
     parser_dns_soa.add_argument('--mname',
             help='Ensure the soa has this mname')
     parser_dns_soa.add_argument('--rname',

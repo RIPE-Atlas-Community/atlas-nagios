@@ -13,7 +13,7 @@ class JsonRequest(urllib2.Request):
 
 def get_response (url):
     '''Fetch a Json Object from url'''
-    print url
+    #print url
     request = JsonRequest(url)
     try:
         conn = urllib2.urlopen(request)
@@ -89,7 +89,7 @@ def main():
     nagios_args['soa']['expire'] = "864000"
     nagios_args['soa']['nxdomain'] = "3600"
 
-    nagios_args['flags'] = "QR RD RA BO"
+    nagios_args['flags'] = "QR,RD,RA,BO"
 
     nagios_args['rtt'] = { 'min':0, 'max':0, 'avg':0 }
     nagios_args['rtt']['min'] = 60
