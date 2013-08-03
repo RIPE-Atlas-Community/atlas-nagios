@@ -1,64 +1,11 @@
 #!/usr/bin/env python
+#NO LONGER COMPATIBLE
+#FOR REFERENCE ONLY
+import sys
+sys.exit()
 import atlas
 import urllib2
 import json
-import sys
-
-class JsonRequest(urllib2.Request):
-    '''Object to make a Json HTTP request'''
-    def __init__(self, url):
-        urllib2.Request.__init__(self, url)
-        self.add_header("Content-Type", "application/json")
-        self.add_header("Accept", "application/json")
-
-def get_response (url):
-    '''Fetch a Json Object from url'''
-    #print url
-    request = JsonRequest(url)
-    try:
-        conn = urllib2.urlopen(request)
-        json_data = json.load(conn)
-        conn.close()
-        return json_data
-    except urllib2.HTTPError as error:
-        print '''Unknown: Fatal error when reading request 
-                (%s): %s''' % (error.code, error.read())
-        sys.exit(3)
-
-def get_measurements( measurement_id):
-    '''Fetch a measuerment with it=measurement_id'''
-    url = "https://atlas.ripe.net/api/v1/measurement/%s/latest/" \
-            % measurement_id
-    return get_response(url)
-
-def parse_measurements(measurements, measurement_type, nagios_message):
-    '''Parse the measuerment'''
-    parsed_measurements = []
-    for measurement in measurements:
-        probe_id = measurement[1]
-        if measurement[5] == None:
-            nagios_message.add_error(
-                    "Probe (%s) has no nagios_message" % (probe_id))
-            continue
-        parsed_measurements.append(
-            {
-                'dns': atlas.DnsMeasurment,
-                'dns6': atlas.DnsMeasurment,
-                'http': atlas.HttpMeasurment,
-                'http6': atlas.HttpMeasurment,
-                'ping6': atlas.PingMeasurment,
-                'ping': atlas.PingMeasurment,
-                'sslcert6': atlas.SSLcertMeasurment,
-                'sslcert': atlas.SSLcertMeasurment,
-            }.get(measurement_type, atlas.Measurment)(probe_id, measurement[5])
-        )
-        #parsed_measurements.append(SSLcertMeasurment(probe_id, measurement[5]))
-    return parsed_measurements 
-
-def check_measurements(measurements, nagios_args, nagios_message):
-    '''check the measuerment'''
-    for measurement in measurements:
-        measurement.check(nagios_args, nagios_message)
 
 def main():
     '''main rutine'''
