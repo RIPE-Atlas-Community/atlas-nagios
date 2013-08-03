@@ -242,11 +242,13 @@ class SoaAnswer(DnsAnswer):
 
     def check(self, args, nagios_message):
         """Main Check routine"""
+        print args
         if self.rrtype != "SOA": 
             nagios_message.add_error(self.msg % (
                     self.probe_id, "Answer is not SOA", self.rrtype))
             return
         if args.mname:
+            print args.mname
             self.check_string("mname", self.mname, args.mname, nagios_message) 
 
 
@@ -294,10 +296,10 @@ class DnsMeasurment(Measurment):
     def check(self, args, nagios_message):
         """Main Check routine"""
         Measurment.check(self, args, nagios_message)
-        if 'rcode' in args:
-            self.check_rcode(args['rcode'], nagios_message)
-        if 'flags' in args:
-            self.check_flags(args['flags'], nagios_message)
+        if args.rcode:
+            self.check_rcode(args.rcode, nagios_message)
+        if args.flags:
+            self.check_flags(args.flags, nagios_message)
 
         if self.rcode == "NOERROR":
             self.answer.check(args, nagios_message)
@@ -340,7 +342,7 @@ def parse_measurements(measurements, measurement_type, nagios_message):
             continue
         parsed_measurements.append(
             {
-                'dns': DnsMeasurment,
+                'soa': DnsMeasurment,
                 'http': HttpMeasurment,
                 'ping': PingMeasurment,
                 'ssl': SSLcertMeasurment,
@@ -410,6 +412,10 @@ def arg_parse():
             help='increase verbosity')
     parser_dns_soa.add_argument("measurement_id", help="Measuerment ID to check")
     parser_dns_soa.add_argument('--max_measurement_age', type=int, default=30,
+            help='The max age of a measuerment in unix time')
+    parser_dns_soa.add_argument('--flags',
+            help='The max age of a measuerment in unix time')
+    parser_dns_soa.add_argument('--rcode',
             help='The max age of a measuerment in unix time')
     parser_dns_soa.add_argument('--mname',
             help='Ensure the soa has this mname')
