@@ -231,25 +231,54 @@ class SoaAnswer(DnsAnswer):
     """Parent class to hold dns SOA measuerment payloads"""
     def __init__(self, probe_id, answer ):
         DnsAnswer.__init__(self, probe_id, answer)
-        if "SOA" in self.answer:
+        if "SOA" in self.answer and "RRSIG" not in self.answer:
             self.qname, self.ttl, _,  self.rrtype, self.mname, \
                     self.rname, self.serial, self.refresh, self.update, \
                     self.expire, self.nxdomain = answer.split()
         else:
             #i think the only other posibility is CNAME?
-            #print self.answer
-            _, _, _, self.rrtype, _ = self.answer.split(None, 5)
+            if "RRSIG" not in self.answer:
+                self.rrtype = "RRSIG"
+            else:
+                try:
+                    _, _, _, self.rrtype, _ = self.answer.split(None, 5)
+                except ValueError:
+                    print self.answer
 
     def check(self, args, nagios_message):
         """Main Check routine"""
-        print args
-        if self.rrtype != "SOA": 
+        if self.rrtype != "SOA" and self.rrtype != "RRSIG": 
             nagios_message.add_error(self.msg % (
                     self.probe_id, "Answer is not SOA", self.rrtype))
             return
-        if args.mname:
-            print args.mname
-            self.check_string("mname", self.mname, args.mname, nagios_message) 
+        elif self.rrtype == "SOA":
+            if args.mname:
+                self.check_string("mname", 
+                        self.mname, args.mname, nagios_message) 
+            if args.rname:
+                self.check_string("rname", 
+                        self.rname, args.rname, nagios_message) 
+            if args.serial:
+                self.check_string("serial", 
+                        self.serial, args.serial, nagios_message) 
+            if args.refresh:
+                self.check_string("refresh", 
+                        self.refresh, args.refresh, nagios_message) 
+            if args.update:
+                self.check_string("update", 
+                        self.update, args.update, nagios_message) 
+            if args.expire:
+                self.check_string("expire", 
+                        self.expire, args.expire, nagios_message) 
+            if args.nxdomain:
+                self.check_string("nxdomain", 
+                        self.nxdomain, args.nxdomain, nagios_message) 
+
+
+
+
+
+
 
 
 class DnsMeasurment(Measurment):
@@ -268,10 +297,12 @@ class DnsMeasurment(Measurment):
         self.flags = self.payload[2]['flags']
         self.answer = None
         if self.rcode == "NOERROR":
-            self.answer = {
-                    "SOA": SoaAnswer,
-            }.get(self.question['qtype'], DnsAnswer)(
-                    self.probe_id, self.payload[2]['answer'])
+            if type(self.payload[2]['answer']) != list:
+                ans = [self.payload[2]['answer']]
+            for ans in (self.payload[2]['answer'],):
+                self.answer = {
+                        "SOA": SoaAnswer,
+                }.get(self.question['qtype'], DnsAnswer)(self.probe_id, ans)
 
     def check_rcode(self, rcode, nagios_message):
         """Check the RCODE is the same as rcode"""
@@ -300,7 +331,6 @@ class DnsMeasurment(Measurment):
             self.check_rcode(args.rcode, nagios_message)
         if args.flags:
             self.check_flags(args.flags, nagios_message)
-
         if self.rcode == "NOERROR":
             self.answer.check(args, nagios_message)
 
