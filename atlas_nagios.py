@@ -7,6 +7,13 @@ import urllib2
 import json
 
 
+def ensure_list(list_please):
+    """make @list_please a slit if it isn't one already"""
+    if type(list_please) != list:
+        return [(list_please)]
+    else:
+        return list_please
+
 def get_response (url):
     '''Fetch a Json Object from url'''
     #print url
@@ -40,11 +47,11 @@ def parse_measurements(measurements, measurement_type, message):
             continue
         parsed_measurements.append(
             {
-                'a': MeasurmentDns,
-                'aaaa': MeasurmentDns,
-                'cname': MeasurmentDns,
-                'ds': MeasurmentDns,
-                'soa': MeasurmentDns,
+                'a': MeasurmentDnsA,
+                'aaaa': MeasurmentDnsAAAA,
+                'cname': MeasurmentDnsCNAME,
+                'ds': MeasurmentDnsDS,
+                'soa': MeasurmentDnsSOA,
                 'http': MeasurmentHTTP,
                 'ping': MeasurmentPing,
                 'ssl': MeasurmentSSL,
@@ -272,14 +279,14 @@ class AnswerDns:
 
     def __init__(self, probe_id, answer):
         """Initiate object"""
-        self.answer = answer
+        self.answer_raw = answer
         self.probe_id = probe_id
         self.msg = "Probe (%s): %s (%s)" 
         try:
-            if "RRSIG" == self.answer.split()[3]:
+            if "RRSIG" == self.answer_raw.split()[3]:
                 self.rrtype = "RRSIG"
         except IndexError:
-            print self.answer
+            print self.answer_raw
 
     def check_string(self, check_type, 
             measurment_string, check_string, message):
@@ -301,12 +308,12 @@ class AnswerDnsSOA(AnswerDns):
     def __init__(self, probe_id, answer ):
         AnswerDns.__init__(self, probe_id, answer)
         try:
-            if "SOA" == self.answer.split()[3]:
+            if "SOA" == self.answer_raw.split()[3]:
                 self.qname, self.ttl, _,  self.rrtype, self.mname, \
                         self.rname, self.serial, self.refresh, self.update, \
                         self.expire, self.nxdomain = answer.split()
         except IndexError:
-            print self.answer
+            print self.answer_raw
 
     def check(self, args, message):
         """Main Check routine"""
@@ -345,14 +352,14 @@ class AnswerDnsA(AnswerDns):
     def __init__(self, probe_id, answer ):
         AnswerDns.__init__(self, probe_id, answer)
         try:
-            if "A" == self.answer.split()[3]:
+            if "A" == self.answer_raw.split()[3]:
                 self.qname, self.ttl, _, self.rrtype, \
                         self.rdata = answer.split()
-            elif "CNAME" == self.answer.split()[3]:
+            elif "CNAME" == self.answer_raw.split()[3]:
                 self.qname, self.ttl, _, self.rrtype, \
                         self.rdata = answer.split()
         except IndexError:
-            print self.answer
+            print self.answer_raw
 
     def check(self, args, message):
         """Main Check routine"""
@@ -376,14 +383,14 @@ class AnswerDnsAAAA(AnswerDns):
     def __init__(self, probe_id, answer ):
         AnswerDns.__init__(self, probe_id, answer)
         try:
-            if "AAAA" == self.answer.split()[3]:
+            if "AAAA" == self.answer_raw.split()[3]:
                 self.qname, self.ttl, _, self.rrtype, \
                         self.rdata = answer.split()
-            elif "CNAME" == self.answer.split()[3]:
+            elif "CNAME" == self.answer_raw.split()[3]:
                 self.qname, self.ttl, _, self.rrtype, \
                         self.rdata = answer.split()
         except IndexError:
-            print self.answer
+            print self.answer_raw
 
     def check(self, args, message):
         """Main Check routine"""
@@ -407,11 +414,11 @@ class AnswerDnsCNAME(AnswerDns):
     def __init__(self, probe_id, answer ):
         AnswerDns.__init__(self, probe_id, answer)
         try:
-            if "CNAME" == self.answer.split()[3]:
+            if "CNAME" == self.answer_raw.split()[3]:
                 self.qname, self.ttl, _, self.rrtype, \
                         self.rdata = answer.split()
         except IndexError:
-            print self.answer
+            print self.answer_raw
 
     def check(self, args, message):
         """Main Check routine"""
@@ -432,11 +439,11 @@ class AnswerDNSKEY(AnswerDns):
     def __init__(self, probe_id, answer ):
         AnswerDns.__init__(self, probe_id, answer)
         try:
-            if "DNSKEY" == self.answer.split()[3]:
+            if "DNSKEY" == self.answer_raw.split()[3]:
                 self.qname, self.ttl, _, self.rrtype, \
                         self.rdata = answer.split()
         except IndexError:
-            print self.answer
+            print self.answer_raw
 
     def check(self, args, message):
         """Main Check routine"""
@@ -457,12 +464,12 @@ class AnswerDnsDS(AnswerDns):
     def __init__(self, probe_id, answer ):
         AnswerDns.__init__(self, probe_id, answer)
         try:
-            if "DS" == self.answer.split()[3]:
+            if "DS" == self.answer_raw.split()[3]:
                 self.qname, self.ttl, _, self.rrtype, self.keytag, \
                         self.algorithm, self.digest_type, \
                         self.digest = answer.split()
         except IndexError:
-            print self.answer
+            print self.answer_raw
 
     def check(self, args, message):
         """Main Check routine"""
@@ -503,18 +510,7 @@ class MeasurmentDns(Measurment):
         self.flags = self.payload[2]['flags']
         self.answer = []
         if self.rcode == "NOERROR":
-            if type(self.payload[2]['answer']) != list:
-                answer = [(self.payload[2]['answer'])]
-            else:
-                answer = self.payload[2]['answer']
-            for ans in answer:
-                self.answer.append({
-                        "A": AnswerDnsA,
-                        "AAAA": AnswerDnsAAAA,
-                        "CNAME": AnswerDnsCNAME,
-                        "DS": AnswerDnsDS,
-                        "SOA": AnswerDnsSOA,
-                }.get(self.question['qtype'], AnswerDns)(self.probe_id, ans))
+            self.answer_raw = ensure_list(self.payload[2]['answer'])
 
     def check_rcode(self, rcode, message):
         """Check the RCODE is the same as rcode"""
@@ -539,40 +535,122 @@ class MeasurmentDns(Measurment):
     def check(self, args, message):
         """Main Check routine"""
         Measurment.check(self, args, message)
-        a_record = False
-        aaaa_record = False
-        cname_record = False
 
         if args.rcode:
             self.check_rcode(args.rcode, message)
         if args.flags:
             self.check_flags(args.flags, message)
-        if self.rcode == "NOERROR":
-            for ans in self.answer:
-                ans.check(args, message)
-                if hasattr(args, 'a_record') and ans.rrtype == "A":
-                    a_record = True
-                if hasattr(args, 'aaaa_record') and ans.rrtype == "AAAA":
-                    aaaa_record = True
-                if hasattr(args, 'cname_record') and ans.rrtype == "CNAME":
-                    cname_record = True
-        if hasattr(args, 'a_record') and not a_record:
+
+
+class MeasurmentDnsA(MeasurmentDns):
+    """class for a dns A measuerment"""
+
+    def __init__(self, probe_id, payload):
+        """Initiate Object"""
+        #super(Measurment, self).__init__(self, payload)
+        MeasurmentDns.__init__(self, probe_id, payload)
+        for ans in self.answer_raw:
+            self.answer.append(AnswerDnsA(self.probe_id, ans))
+
+    def check(self, args, message):
+        a_record = False
+        cname_record = False
+        MeasurmentDns.check(self, args, message)
+        for ans in self.answer:
+            ans.check(args, message)
+            if args.a_record and ans.rrtype == "A":
+                a_record = True
+            if args.cname_record and ans.rrtype == "CNAME":
+                cname_record = True
+        if args.a_record and not a_record:
             message.add_error(self.msg % (
                 self.probe_id, "No A Records Found", ""))
-        if hasattr(args, 'aaaa_record') and not aaaa_record:
+        if args.cname_record and not cname_record:
             message.add_error(self.msg % (
-                self.probe_id, "No AAAA Records Found", ""))
-        if hasattr(args, 'cname_record') and not cname_record:
-            message.add_warn(self.msg % (
                 self.probe_id, "No CNAME Records Found", ""))
 
-class MeasurmentDnsSOA(Measurment):
+
+class MeasurmentDnsAAAA(MeasurmentDns):
+    """class for a dns AAAA measuerment"""
+
+    def __init__(self, probe_id, payload):
+        """Initiate Object"""
+        #super(Measurment, self).__init__(self, payload)
+        MeasurmentDns.__init__(self, probe_id, payload)
+        for ans in self.answer_raw:
+            self.answer.append(AnswerDnsAAAA(self.probe_id, ans))
+
+    def check(self, args, message):
+        aaaa_record = False
+        cname_record = False
+        MeasurmentDns.check(self, args, message)
+        for ans in self.answer:
+            ans.check(args, message)
+            if args.aaaa_record and ans.rrtype == "AAAA":
+                aaaa_record = True
+            if args.cname_record and ans.rrtype == "CNAME":
+                cname_record = True
+        if args.aaaa_record and not aaaa_record:
+            message.add_error(self.msg % (
+                self.probe_id, "No AAAA Records Found", ""))
+        if args.cname_record and not cname_record:
+            message.add_error(self.msg % (
+                self.probe_id, "No CNAME Records Found", ""))
+
+
+class MeasurmentDnsCNAME(MeasurmentDns):
+    """class for a dns CNAME measuerment"""
+
+    def __init__(self, probe_id, payload):
+        """Initiate Object"""
+        #super(Measurment, self).__init__(self, payload)
+        MeasurmentDns.__init__(self, probe_id, payload)
+        for ans in self.answer_raw:
+            self.answer.append(AnswerDnsCNAME(self.probe_id, ans))
+
+    def check(self, args, message):
+        cname_record = False
+        MeasurmentDns.check(self, args, message)
+        for ans in self.answer:
+            ans.check(args, message)
+            if args.cname_record and ans.rrtype == "CNAME":
+                cname_record = True
+        if args.cname_record and not cname_record:
+            message.add_error(self.msg % (
+                self.probe_id, "No CNAME Records Found", ""))
+
+
+class MeasurmentDnsDS(MeasurmentDns):
+    """class for a dns DS measuerment"""
+
+    def __init__(self, probe_id, payload):
+        """Initiate Object"""
+        #super(Measurment, self).__init__(self, payload)
+        MeasurmentDns.__init__(self, probe_id, payload)
+        for ans in self.answer_raw:
+            self.answer.append(AnswerDnsDS(self.probe_id, ans))
+
+    def check(self, args, message):
+        MeasurmentDns.check(self, args, message)
+        for ans in self.answer:
+            ans.check(args, message)
+
+
+class MeasurmentDnsSOA(MeasurmentDns):
     """class for a dns SOA measuerment"""
 
     def __init__(self, probe_id, payload):
         """Initiate Object"""
         #super(Measurment, self).__init__(self, payload)
         MeasurmentDns.__init__(self, probe_id, payload)
+        for ans in self.answer_raw:
+            self.answer.append(AnswerDnsSOA(self.probe_id, ans))
+
+    def check(self, args, message):
+        MeasurmentDns.check(self, args, message)
+        for ans in self.answer:
+            ans.check(args, message)
+
  
 class JsonRequest(urllib2.Request):
     '''Object to make a Json HTTP request'''
