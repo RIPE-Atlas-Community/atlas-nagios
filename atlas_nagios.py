@@ -7,6 +7,60 @@ import urllib2
 import json
 
 
+def get_response (url):
+    '''Fetch a Json Object from url'''
+    #print url
+    request = JsonRequest(url)
+    try:
+        conn = urllib2.urlopen(request)
+        json_data = json.load(conn)
+        conn.close()
+        return json_data
+    except urllib2.HTTPError as error:
+        print '''Unknown: Fatal error when reading request
+                (%s): %s''' % (error.code, error.read())
+        sys.exit(3)
+
+
+def get_measurements( measurement_id):
+    '''Fetch a measuerment with it=measurement_id'''
+    url = "https://atlas.ripe.net/api/v1/measurement/%s/latest/" \
+            % measurement_id
+    return get_response(url)
+
+
+def parse_measurements(measurements, measurement_type, message):
+    '''Parse the measuerment'''
+    parsed_measurements = []
+    for measurement in measurements:
+        probe_id = measurement[1]
+        if measurement[5] == None:
+            message.add_error(
+                    "Probe (%s) has no data" % (probe_id))
+            continue
+        parsed_measurements.append(
+            {
+                'a': MeasurmentDns,
+                'aaaa': MeasurmentDns,
+                'cname': MeasurmentDns,
+                'ds': MeasurmentDns,
+                'soa': MeasurmentDns,
+                'http': MeasurmentHTTP,
+                'ping': MeasurmentPing,
+                'ssl': MeasurmentSSL,
+            }.get(measurement_type, Measurment)(probe_id, measurement[5])
+        )
+        #parsed_measurements.append(MeasurmentSSL(probe_id, measurement[5]))
+    return parsed_measurements
+
+
+def check_measurements(measurements, args, message):
+    '''check the measuerment'''
+    for measurement in measurements:
+        measurement.check(args, message)
+
+
+
 class Message:
     """Object to store nagios messages"""
     def __init__(self, verbose):
@@ -512,6 +566,14 @@ class MeasurmentDns(Measurment):
             message.add_warn(self.msg % (
                 self.probe_id, "No CNAME Records Found", ""))
 
+class MeasurmentDnsSOA(Measurment):
+    """class for a dns SOA measuerment"""
+
+    def __init__(self, probe_id, payload):
+        """Initiate Object"""
+        #super(Measurment, self).__init__(self, payload)
+        MeasurmentDns.__init__(self, probe_id, payload)
+ 
 class JsonRequest(urllib2.Request):
     '''Object to make a Json HTTP request'''
     def __init__(self, url):
@@ -519,58 +581,6 @@ class JsonRequest(urllib2.Request):
         self.add_header("Content-Type", "application/json")
         self.add_header("Accept", "application/json")
 
-
-def get_response (url):
-    '''Fetch a Json Object from url'''
-    #print url
-    request = JsonRequest(url)
-    try:
-        conn = urllib2.urlopen(request)
-        json_data = json.load(conn)
-        conn.close()
-        return json_data
-    except urllib2.HTTPError as error:
-        print '''Unknown: Fatal error when reading request
-                (%s): %s''' % (error.code, error.read())
-        sys.exit(3)
-
-
-def get_measurements( measurement_id):
-    '''Fetch a measuerment with it=measurement_id'''
-    url = "https://atlas.ripe.net/api/v1/measurement/%s/latest/" \
-            % measurement_id
-    return get_response(url)
-
-
-def parse_measurements(measurements, measurement_type, message):
-    '''Parse the measuerment'''
-    parsed_measurements = []
-    for measurement in measurements:
-        probe_id = measurement[1]
-        if measurement[5] == None:
-            message.add_error(
-                    "Probe (%s) has no data" % (probe_id))
-            continue
-        parsed_measurements.append(
-            {
-                'a': MeasurmentDns,
-                'aaaa': MeasurmentDns,
-                'cname': MeasurmentDns,
-                'ds': MeasurmentDns,
-                'soa': MeasurmentDns,
-                'http': MeasurmentHTTP,
-                'ping': MeasurmentPing,
-                'ssl': MeasurmentSSL,
-            }.get(measurement_type, Measurment)(probe_id, measurement[5])
-        )
-        #parsed_measurements.append(MeasurmentSSL(probe_id, measurement[5]))
-    return parsed_measurements
-
-
-def check_measurements(measurements, args, message):
-    '''check the measuerment'''
-    for measurement in measurements:
-        measurement.check(args, message)
 
 
 def arg_parse():
