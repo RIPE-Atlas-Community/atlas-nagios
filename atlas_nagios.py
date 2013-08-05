@@ -1,14 +1,20 @@
 #!/usr/bin/env python
 """ Class to use the ripe atlas platform to do nagios checks """
-import time, sys, argparse, urllib2, json
+import sys
+import time
+import argparse
+import urllib2
+import json
 
-class NagiosMessage:
+
+class Message:
     """Object to store nagios messages"""
     def __init__(self, verbose):
         """
         Initialise Object
         verbose is an interger indicating how Much information to return
         """
+        #need to group these by probe id
         self.error = []
         self.warn = []
         self.ok = []
@@ -27,7 +33,7 @@ class NagiosMessage:
         self.ok.append(message)
 
     def exit(self):
-        """Parse the nagios_message and exit correctly for nagios"""
+        """Parse the message and exit correctly for nagios"""
         if len(self.error) > 0:
             if self.verbose > 0:
                 print "ERROR: %d: %s" % (len(self.error),
@@ -59,6 +65,7 @@ class NagiosMessage:
                 print "OK: %d" % len(self.ok)
             sys.exit(0)
 
+
 class Measurment: 
     """Parent object for an atlas measurment"""
 
@@ -69,32 +76,33 @@ class Measurment:
         self.check_time = self.payload[1]
         self.msg = "Probe (%s): %s (%s)" 
 
-    def check_measurement_age(self, max_age, nagios_message):
+    def check_measurement_age(self, max_age, message):
         """Check if a measerment is fresh enough"""
         min_time = time.time() - max_age
         check_time_str = time.ctime(self.check_time)
         if self.check_time < min_time:
-            nagios_message.add_error(self.msg % \
+            message.add_error(self.msg % \
                     (self.probe_id, "measurement to old", check_time_str))
         else:
-            nagios_message.add_ok(self.msg % \
+            message.add_ok(self.msg % \
                     (self.probe_id, "measurement fresh", check_time_str))
 
     def check_string(self, check_string, measurment_string, 
-            check_type, nagios_message):
+            check_type, message):
         """Generic check to compare two strings"""
         if check_string == measurment_string:
-            nagios_message.add_ok(self.msg % \
+            message.add_ok(self.msg % \
                     (self.probe_id, check_type, measurment_string))
         else:
-            nagios_message.add_error(self.msg % \
+            message.add_error(self.msg % \
                      (self.probe_id, check_type, measurment_string))
 
-    def check(self, args, nagios_message):             
+    def check(self, args, message):             
         """main check fucntion"""
         if args.max_measurement_age != False:
             self.check_measurement_age(
-                    args.max_measurement_age, nagios_message)
+                    args.max_measurement_age, message)
+
 
 class SSLcertMeasurment(Measurment):
     """Object for an atlas SSL Measurment"""
@@ -108,32 +116,33 @@ class SSLcertMeasurment(Measurment):
                 time.strptime(self.payload[2][0][4],"%Y%m%d%H%M%SZ"))
         self.sha1 = self.payload[2][0][5]
 
-    def check_expiry(self, warn_expiry, nagios_message):
+    def check_expiry(self, warn_expiry, message):
         """Check if the certificat is going to expire before warn_expiry"""
         current_time = time.time()
         warn_time = current_time - (warn_expiry * 60 * 60 * 24)
         expiry_str = time.ctime(self.expiry)
         if self.expiry < current_time:
-            nagios_message.add_error(self.msg % (
+            message.add_error(self.msg % (
                     self.probe_id, "certificate expierd", expiry_str))
         elif self.expiry < warn_time:
-            nagios_message.add_warn(self.msg % (
+            message.add_warn(self.msg % (
                     self.probe_id, "certificate expires soon", expiry_str))
         else:
-            nagios_message.add_ok(self.msg % (
+            message.add_ok(self.msg % (
                     self.probe_id, "certificate expiry good", expiry_str))
 
-    def check(self, args, nagios_message):
+    def check(self, args, message):
         """Main SSL check routine"""
-        Measurment.check(self, args, nagios_message)
+        Measurment.check(self, args, message)
         if args.sha1hash:
             self.check_string( args.sha1hash, 
-                    self.sha1, 'sha1hash', nagios_message)
+                    self.sha1, 'sha1hash', message)
         if args.common_name:
             self.check_string( args.common_name, 
-                    self.common_name, 'cn', nagios_message)
+                    self.common_name, 'cn', message)
         if args.sslexpiry:
-            self.check_expiry(args.sslexpiry, nagios_message)
+            self.check_expiry(args.sslexpiry, message)
+
 
 class PingMeasurment(Measurment):
     """Object for an atlas Ping Measurment"""
@@ -144,27 +153,26 @@ class PingMeasurment(Measurment):
         Measurment.__init__(self, probe_id, payload)
         self.avg_rtt = self.payload[0]
 
-    def check_rtt(self, check_type, rtt, nagios_message):
+    def check_rtt(self, check_type, rtt, message):
         """Check the return trip time islower then rtt"""
         msg = "desierd (%s), real (%s)" % (rtt, self.avg_rtt)
         if self.avg_rtt < rtt:
-            nagios_message.add_ok(self.msg % (
+            message.add_ok(self.msg % (
                     self.probe_id, msg, "Ping %s" % check_type))
         else:
-            nagios_message.add_error(self.msg % (
+            message.add_error(self.msg % (
                     self.probe_id, msg, "Ping %s" % check_type))
 
-    def check(self, args, nagios_message):
+    def check(self, args, message):
         """Main ping check routine"""
-        Measurment.check(self, args, nagios_message)
+        Measurment.check(self, args, message)
 
         if args.rtt_min:
-            self.check_rtt("min", args.rtt_min, nagios_message) 
+            self.check_rtt("min", args.rtt_min, message) 
         if args.rtt_max:
-            self.check_rtt("max", args.rtt_max, nagios_message) 
+            self.check_rtt("max", args.rtt_max, message) 
         if args.rtt_avg:
-            self.check_rtt("avg", args.rtt_avg, nagios_message) 
-
+            self.check_rtt("avg", args.rtt_avg, message) 
 
 
 class HttpMeasurment(Measurment):
@@ -183,26 +191,27 @@ class HttpMeasurment(Measurment):
                 #probably a time out, should use a better status code
                 self.status = 500
 
-    def check_status(self, check_status, nagios_message):
+    def check_status(self, check_status, message):
         """check the HTTP status is the same as check_status"""
         msg = "%s: desierd (%s), real (%s)" % \
                 (self.probe_id, check_status, self.status)
         try:
             if int(self.status) == int(check_status):
-                nagios_message.add_ok(self.msg % (
+                message.add_ok(self.msg % (
                         self.probe_id, msg, "HTTP Status Code"))
             else:
-                nagios_message.add_error(self.msg % (
+                message.add_error(self.msg % (
                         self.probe_id, msg, "HTTP Status Code"))
         except ValueError:
-            nagios_message.add_error(self.msg % (
+            message.add_error(self.msg % (
                     self.probe_id, msg, "HTTP Status Code"))
 
-    def check(self, args, nagios_message):
+    def check(self, args, message):
         """Main HTTP check routine"""
-        Measurment.check(self, args, nagios_message)
+        Measurment.check(self, args, message)
         if args.status_code:
-            self.check_status(args.status_code, nagios_message)
+            self.check_status(args.status_code, message)
+
 
 class DnsAnswer:
     """Parent class to hold dns measuerment payloads"""
@@ -214,18 +223,19 @@ class DnsAnswer:
         self.msg = "Probe (%s): %s (%s)" 
 
     def check_string(self, check_type, 
-            measurment_string, check_string, nagios_message):
+            measurment_string, check_string, message):
         """Generic function to compare two strings"""
         if check_string == measurment_string:
-            nagios_message.add_ok(self.msg % (
+            message.add_ok(self.msg % (
                     self.probe_id, check_type, measurment_string))
         else:
-            nagios_message.add_error(
+            message.add_error(
                     self.msg % (self.probe_id, check_type, measurment_string))
 
-    def check(self, args, nagios_message):
+    def check(self, args, message):
         """Main Check routine"""
         raise NotImplementedError("Subclasses should implement this!")
+
 
 class SoaAnswer(DnsAnswer):
     """Parent class to hold dns SOA measuerment payloads"""
@@ -245,40 +255,34 @@ class SoaAnswer(DnsAnswer):
                 except ValueError:
                     print self.answer
 
-    def check(self, args, nagios_message):
+    def check(self, args, message):
         """Main Check routine"""
         if self.rrtype != "SOA" and self.rrtype != "RRSIG": 
-            nagios_message.add_error(self.msg % (
+            message.add_error(self.msg % (
                     self.probe_id, "Answer is not SOA", self.rrtype))
             return
         elif self.rrtype == "SOA":
             if args.mname:
                 self.check_string("mname", 
-                        self.mname, args.mname, nagios_message) 
+                        self.mname, args.mname, message) 
             if args.rname:
                 self.check_string("rname", 
-                        self.rname, args.rname, nagios_message) 
+                        self.rname, args.rname, message) 
             if args.serial:
                 self.check_string("serial", 
-                        self.serial, args.serial, nagios_message) 
+                        self.serial, args.serial, message) 
             if args.refresh:
                 self.check_string("refresh", 
-                        self.refresh, args.refresh, nagios_message) 
+                        self.refresh, args.refresh, message) 
             if args.update:
                 self.check_string("update", 
-                        self.update, args.update, nagios_message) 
+                        self.update, args.update, message) 
             if args.expire:
                 self.check_string("expire", 
-                        self.expire, args.expire, nagios_message) 
+                        self.expire, args.expire, message) 
             if args.nxdomain:
                 self.check_string("nxdomain", 
-                        self.nxdomain, args.nxdomain, nagios_message) 
-
-
-
-
-
-
+                        self.nxdomain, args.nxdomain, message) 
 
 
 class DnsMeasurment(Measurment):
@@ -304,35 +308,36 @@ class DnsMeasurment(Measurment):
                         "SOA": SoaAnswer,
                 }.get(self.question['qtype'], DnsAnswer)(self.probe_id, ans)
 
-    def check_rcode(self, rcode, nagios_message):
+    def check_rcode(self, rcode, message):
         """Check the RCODE is the same as rcode"""
         msg = "desierd (%s), real (%s)" % ( rcode, self.rcode)
         if self.rcode == rcode:
-            nagios_message.add_ok(self.msg % (
+            message.add_ok(self.msg % (
                     self.probe_id, msg, "DNS RCODE"))
         else:
-            nagios_message.add_error(self.msg % (
+            message.add_error(self.msg % (
                     self.probe_id, msg, "DNS RCODE"))
 
-    def check_flags(self, flags, nagios_message):
+    def check_flags(self, flags, message):
         """Check the flags returned in the check are the same as flags"""
         for flag in flags.split(","):
             if flag in self.flags.split(): 
-                nagios_message.add_ok(self.msg % (
+                message.add_ok(self.msg % (
                         self.probe_id, "Flag found", flag))
             else:
-                nagios_message.add_error(self.msg % (
+                message.add_error(self.msg % (
                         self.probe_id, "Flag Missing ", flag))
 
-    def check(self, args, nagios_message):
+    def check(self, args, message):
         """Main Check routine"""
-        Measurment.check(self, args, nagios_message)
+        Measurment.check(self, args, message)
         if args.rcode:
-            self.check_rcode(args.rcode, nagios_message)
+            self.check_rcode(args.rcode, message)
         if args.flags:
-            self.check_flags(args.flags, nagios_message)
+            self.check_flags(args.flags, message)
         if self.rcode == "NOERROR":
-            self.answer.check(args, nagios_message)
+            self.answer.check(args, message)
+
 
 class JsonRequest(urllib2.Request):
     '''Object to make a Json HTTP request'''
@@ -340,6 +345,7 @@ class JsonRequest(urllib2.Request):
         urllib2.Request.__init__(self, url)
         self.add_header("Content-Type", "application/json")
         self.add_header("Accept", "application/json")
+
 
 def get_response (url):
     '''Fetch a Json Object from url'''
@@ -355,19 +361,21 @@ def get_response (url):
                 (%s): %s''' % (error.code, error.read())
         sys.exit(3)
 
+
 def get_measurements( measurement_id):
     '''Fetch a measuerment with it=measurement_id'''
     url = "https://atlas.ripe.net/api/v1/measurement/%s/latest/" \
             % measurement_id
     return get_response(url)
 
-def parse_measurements(measurements, measurement_type, nagios_message):
+
+def parse_measurements(measurements, measurement_type, message):
     '''Parse the measuerment'''
     parsed_measurements = []
     for measurement in measurements:
         probe_id = measurement[1]
         if measurement[5] == None:
-            nagios_message.add_error(
+            message.add_error(
                     "Probe (%s) has no data" % (probe_id))
             continue
         parsed_measurements.append(
@@ -381,10 +389,12 @@ def parse_measurements(measurements, measurement_type, nagios_message):
         #parsed_measurements.append(SSLcertMeasurment(probe_id, measurement[5]))
     return parsed_measurements
 
-def check_measurements(measurements, args, nagios_message):
+
+def check_measurements(measurements, args, message):
     '''check the measuerment'''
     for measurement in measurements:
-        measurement.check(args, nagios_message)
+        measurement.check(args, message)
+
 
 def arg_parse():
     """Parse arguments"""
@@ -440,7 +450,8 @@ def arg_parse():
     #DNS SOA OPTIONS
     parser_dns_soa.add_argument('-v', '--verbose', action='count',
             help='increase verbosity')
-    parser_dns_soa.add_argument("measurement_id", help="Measuerment ID to check")
+    parser_dns_soa.add_argument("measurement_id", 
+            help="Measuerment ID to check")
     parser_dns_soa.add_argument('--max_measurement_age', type=int, default=30,
             help='The max age of a measuerment in unix time')
     parser_dns_soa.add_argument('--flags',
@@ -463,14 +474,17 @@ def arg_parse():
             help='Ensure the soa has this nxdomain')
     return parser.parse_args()
 
+
 def main():
     """main function"""
     args = arg_parse()
-    nagios_message = NagiosMessage(args.verbose)
+    message = Message(args.verbose)
     measurements =  get_measurements(args.measurement_id)
     parsed_measurements = parse_measurements(
-            measurements, args.name, nagios_message)
-    check_measurements(parsed_measurements, args, nagios_message)
-    nagios_message.exit()
+            measurements, args.name, message)
+    check_measurements(parsed_measurements, args, message)
+    message.exit()
+
+
 if __name__ == '__main__':
     main()
