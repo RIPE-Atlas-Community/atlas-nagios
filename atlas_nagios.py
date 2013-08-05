@@ -279,14 +279,14 @@ class AnswerDns:
 
     def __init__(self, probe_id, answer):
         """Initiate object"""
-        self.answer_raw = answer
+        self.answer = answer
         self.probe_id = probe_id
         self.msg = "Probe (%s): %s (%s)" 
         try:
-            if "RRSIG" == self.answer_raw.split()[3]:
+            if "RRSIG" == self.answer.split()[3]:
                 self.rrtype = "RRSIG"
         except IndexError:
-            print self.answer_raw
+            print self.answer
 
     def check_string(self, check_type, 
             measurment_string, check_string, message):
@@ -308,12 +308,12 @@ class AnswerDnsSOA(AnswerDns):
     def __init__(self, probe_id, answer ):
         AnswerDns.__init__(self, probe_id, answer)
         try:
-            if "SOA" == self.answer_raw.split()[3]:
+            if "SOA" == self.answer.split()[3]:
                 self.qname, self.ttl, _,  self.rrtype, self.mname, \
                         self.rname, self.serial, self.refresh, self.update, \
                         self.expire, self.nxdomain = answer.split()
         except IndexError:
-            print self.answer_raw
+            print self.answer
 
     def check(self, args, message):
         """Main Check routine"""
@@ -352,14 +352,14 @@ class AnswerDnsA(AnswerDns):
     def __init__(self, probe_id, answer ):
         AnswerDns.__init__(self, probe_id, answer)
         try:
-            if "A" == self.answer_raw.split()[3]:
+            if "A" == self.answer.split()[3]:
                 self.qname, self.ttl, _, self.rrtype, \
                         self.rdata = answer.split()
-            elif "CNAME" == self.answer_raw.split()[3]:
+            elif "CNAME" == self.answer.split()[3]:
                 self.qname, self.ttl, _, self.rrtype, \
                         self.rdata = answer.split()
         except IndexError:
-            print self.answer_raw
+            print self.answer
 
     def check(self, args, message):
         """Main Check routine"""
@@ -383,14 +383,14 @@ class AnswerDnsAAAA(AnswerDns):
     def __init__(self, probe_id, answer ):
         AnswerDns.__init__(self, probe_id, answer)
         try:
-            if "AAAA" == self.answer_raw.split()[3]:
+            if "AAAA" == self.answer.split()[3]:
                 self.qname, self.ttl, _, self.rrtype, \
                         self.rdata = answer.split()
-            elif "CNAME" == self.answer_raw.split()[3]:
+            elif "CNAME" == self.answer.split()[3]:
                 self.qname, self.ttl, _, self.rrtype, \
                         self.rdata = answer.split()
         except IndexError:
-            print self.answer_raw
+            print self.answer
 
     def check(self, args, message):
         """Main Check routine"""
@@ -414,11 +414,11 @@ class AnswerDnsCNAME(AnswerDns):
     def __init__(self, probe_id, answer ):
         AnswerDns.__init__(self, probe_id, answer)
         try:
-            if "CNAME" == self.answer_raw.split()[3]:
+            if "CNAME" == self.answer.split()[3]:
                 self.qname, self.ttl, _, self.rrtype, \
                         self.rdata = answer.split()
         except IndexError:
-            print self.answer_raw
+            print self.answer
 
     def check(self, args, message):
         """Main Check routine"""
@@ -439,11 +439,11 @@ class AnswerDNSKEY(AnswerDns):
     def __init__(self, probe_id, answer ):
         AnswerDns.__init__(self, probe_id, answer)
         try:
-            if "DNSKEY" == self.answer_raw.split()[3]:
+            if "DNSKEY" == self.answer.split()[3]:
                 self.qname, self.ttl, _, self.rrtype, \
                         self.rdata = answer.split()
         except IndexError:
-            print self.answer_raw
+            print self.answer
 
     def check(self, args, message):
         """Main Check routine"""
@@ -464,12 +464,12 @@ class AnswerDnsDS(AnswerDns):
     def __init__(self, probe_id, answer ):
         AnswerDns.__init__(self, probe_id, answer)
         try:
-            if "DS" == self.answer_raw.split()[3]:
+            if "DS" == self.answer.split()[3]:
                 self.qname, self.ttl, _, self.rrtype, self.keytag, \
                         self.algorithm, self.digest_type, \
                         self.digest = answer.split()
         except IndexError:
-            print self.answer_raw
+            print self.answer
 
     def check(self, args, message):
         """Main Check routine"""
