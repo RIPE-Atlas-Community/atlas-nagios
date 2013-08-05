@@ -104,7 +104,7 @@ class Measurment:
                     args.max_measurement_age, message)
 
 
-class SSLcertMeasurment(Measurment):
+class MeasurmentSSL(Measurment):
     """Object for an atlas SSL Measurment"""
 
     def __init__(self, probe_id, payload):
@@ -144,7 +144,7 @@ class SSLcertMeasurment(Measurment):
             self.check_expiry(args.sslexpiry, message)
 
 
-class PingMeasurment(Measurment):
+class MeasurmentPing(Measurment):
     """Object for an atlas Ping Measurment"""
 
     def __init__(self, probe_id, payload):
@@ -175,7 +175,7 @@ class PingMeasurment(Measurment):
             self.check_rtt("avg", args.rtt_avg, message) 
 
 
-class HttpMeasurment(Measurment):
+class MeasurmentHTTP(Measurment):
     """Object for an atlas HTTP Measurment"""
 
     def __init__(self, probe_id, payload):
@@ -558,12 +558,12 @@ def parse_measurements(measurements, measurement_type, message):
                 'cname': MeasurmentDns,
                 'ds': MeasurmentDns,
                 'soa': MeasurmentDns,
-                'http': HttpMeasurment,
-                'ping': PingMeasurment,
-                'ssl': SSLcertMeasurment,
+                'http': MeasurmentHTTP,
+                'ping': MeasurmentPing,
+                'ssl': MeasurmentSSL,
             }.get(measurement_type, Measurment)(probe_id, measurement[5])
         )
-        #parsed_measurements.append(SSLcertMeasurment(probe_id, measurement[5]))
+        #parsed_measurements.append(MeasurmentSSL(probe_id, measurement[5]))
     return parsed_measurements
 
 
