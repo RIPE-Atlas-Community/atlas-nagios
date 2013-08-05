@@ -221,6 +221,11 @@ class DnsAnswer:
         self.answer = answer
         self.probe_id = probe_id
         self.msg = "Probe (%s): %s (%s)" 
+        try:
+            if "RRSIG" == self.answer.split()[3]:
+                self.rrtype = "RRSIG"
+        except IndexError:
+            print self.answer
 
     def check_string(self, check_type, 
             measurment_string, check_string, message):
@@ -241,27 +246,23 @@ class SoaAnswer(DnsAnswer):
     """Parent class to hold dns SOA measuerment payloads"""
     def __init__(self, probe_id, answer ):
         DnsAnswer.__init__(self, probe_id, answer)
-        if "SOA" in self.answer and "RRSIG" not in self.answer:
-            self.qname, self.ttl, _,  self.rrtype, self.mname, \
-                    self.rname, self.serial, self.refresh, self.update, \
-                    self.expire, self.nxdomain = answer.split()
-        else:
-            #i think the only other posibility is CNAME?
-            if "RRSIG" not in self.answer:
-                self.rrtype = "RRSIG"
-            else:
-                try:
-                    _, _, _, self.rrtype, _ = self.answer.split(None, 5)
-                except ValueError:
-                    print self.answer
+        try:
+            if "SOA" == self.answer.split()[3]:
+                self.qname, self.ttl, _,  self.rrtype, self.mname, \
+                        self.rname, self.serial, self.refresh, self.update, \
+                        self.expire, self.nxdomain = answer.split()
+        except IndexError:
+            print self.answer
 
     def check(self, args, message):
         """Main Check routine"""
-        if self.rrtype != "SOA" and self.rrtype != "RRSIG": 
-            message.add_error(self.msg % (
-                    self.probe_id, "Answer is not SOA", self.rrtype))
+        if self.rrtype == "RRSIG":
             return
-        elif self.rrtype == "SOA":
+        elif self.rrtype != "SOA":
+            message.add_error(self.msg % (
+                    self.probe_id, "RRTYPE", self.rrtype))
+            return
+        else:
             if args.mname:
                 self.check_string("mname", 
                         self.mname, args.mname, message) 
@@ -285,7 +286,154 @@ class SoaAnswer(DnsAnswer):
                         self.nxdomain, args.nxdomain, message) 
 
 
-class DnsMeasurment(Measurment):
+class AnswerA(DnsAnswer):
+    """Parent class to hold dns A measuerment payloads"""
+    def __init__(self, probe_id, answer ):
+        DnsAnswer.__init__(self, probe_id, answer)
+        try:
+            if "A" == self.answer.split()[3]:
+                self.qname, self.ttl, _, self.rrtype, \
+                        self.rdata = answer.split()
+            elif "CNAME" == self.answer.split()[3]:
+                self.qname, self.ttl, _, self.rrtype, \
+                        self.rdata = answer.split()
+        except IndexError:
+            print self.answer
+
+    def check(self, args, message):
+        """Main Check routine"""
+        if self.rrtype == "RRSIG":
+            return
+        elif self.rrtype != "A" and self.rrtype != "CNAME":
+            message.add_error(self.msg % (
+                    self.probe_id, "RRTYPE", self.rrtype))
+            return
+        else:
+            if args.cname_record and self.rrtype == "CNAME":
+                self.check_string("cname", 
+                        self.rdata, args.cname_record, message) 
+            if args.a_record and self.rrtype == "A":
+                self.check_string("a", 
+                        self.rdata, args.a_record, message) 
+
+
+class AnswerAAAA(DnsAnswer):
+    """Parent class to hold dns A measuerment payloads"""
+    def __init__(self, probe_id, answer ):
+        DnsAnswer.__init__(self, probe_id, answer)
+        try:
+            if "AAAA" == self.answer.split()[3]:
+                self.qname, self.ttl, _, self.rrtype, \
+                        self.rdata = answer.split()
+            elif "CNAME" == self.answer.split()[3]:
+                self.qname, self.ttl, _, self.rrtype, \
+                        self.rdata = answer.split()
+        except IndexError:
+            print self.answer
+
+    def check(self, args, message):
+        """Main Check routine"""
+        if self.rrtype == "RRSIG":
+            return
+        elif self.rrtype != "AAAA" and self.rrtype != "CNAME":
+            message.add_error(self.msg % (
+                    self.probe_id, "RRTYPE", self.rrtype))
+            return
+        else:
+            if args.cname_record and self.rrtype == "CNAME":
+                self.check_string("cname", 
+                        self.rdata, args.cname_record, message) 
+            if args.aaaa_record and self.rrtype == "AAAA":
+                self.check_string("aaaa", 
+                        self.rdata, args.aaaa_record, message) 
+
+
+class AnswerCNAME(DnsAnswer):
+    """Parent class to hold dns CNAME measuerment payloads"""
+    def __init__(self, probe_id, answer ):
+        DnsAnswer.__init__(self, probe_id, answer)
+        try:
+            if "CNAME" == self.answer.split()[3]:
+                self.qname, self.ttl, _, self.rrtype, \
+                        self.rdata = answer.split()
+        except IndexError:
+            print self.answer
+
+    def check(self, args, message):
+        """Main Check routine"""
+        if self.rrtype == "RRSIG":
+            return
+        elif self.rrtype != "CNAME":
+            message.add_error(self.msg % (
+                    self.probe_id, "RRTYPE", self.rrtype))
+            return
+        else:
+            if args.cname_record:
+                self.check_string("cname", 
+                        self.rdata, args.cname_record, message) 
+ 
+
+class AnswerDNSKEY(DnsAnswer):
+    """Parent class to hold dns DNSKEY measuerment payloads"""
+    def __init__(self, probe_id, answer ):
+        DnsAnswer.__init__(self, probe_id, answer)
+        try:
+            if "DNSKEY" == self.answer.split()[3]:
+                self.qname, self.ttl, _, self.rrtype, \
+                        self.rdata = answer.split()
+        except IndexError:
+            print self.answer
+
+    def check(self, args, message):
+        """Main Check routine"""
+        if self.rrtype == "RRSIG":
+            return
+        elif self.rrtype != "DNSKEY":
+            message.add_error(self.msg % (
+                    self.probe_id, "RRTYPE", self.rrtype))
+            return
+        else:
+            if args.cname_record:
+                self.check_string("cname", 
+                        self.rdata, args.cname_record, message) 
+ 
+
+class AnswerDS(DnsAnswer):
+    """Parent class to hold dns DS measuerment payloads"""
+    def __init__(self, probe_id, answer ):
+        DnsAnswer.__init__(self, probe_id, answer)
+        try:
+            if "DS" == self.answer.split()[3]:
+                self.qname, self.ttl, _, self.rrtype, self.keytag, \
+                        self.algorithm, self.digest_type, \
+                        self.digest = answer.split()
+        except IndexError:
+            print self.answer
+
+    def check(self, args, message):
+        """Main Check routine"""
+        if self.rrtype == "RRSIG":
+            return
+        elif self.rrtype != "DS":
+            message.add_error(self.msg % (
+                    self.probe_id, "RRTYPE", self.rrtype))
+            return
+        else:
+            if args.keytag:
+                self.check_string("keytag", 
+                        self.keytag, args.keytag, message) 
+            if args.algorithm:
+                self.check_string("algorithm", 
+                        self.algorithm, args.algorithm, message) 
+            if args.digest_type:
+                self.check_string("digest", 
+                        self.digest_type, args.digest_type, message) 
+            if args.digest:
+                self.check_string("digest", 
+                        self.digest, args.digest, message) 
+ 
+
+class MeasurmentDns(Measurment):
     """Parent class for a dns measuerment"""
 
     def __init__(self, probe_id, payload):
@@ -299,14 +447,20 @@ class DnsMeasurment(Measurment):
         self.authority = self.payload[2]['authority']
         self.rcode = self.payload[2]['rcode']
         self.flags = self.payload[2]['flags']
-        self.answer = None
+        self.answer = []
         if self.rcode == "NOERROR":
             if type(self.payload[2]['answer']) != list:
-                ans = [self.payload[2]['answer']]
-            for ans in (self.payload[2]['answer'],):
-                self.answer = {
+                answer = [(self.payload[2]['answer'])]
+            else:
+                answer = self.payload[2]['answer']
+            for ans in answer:
+                self.answer.append({
+                        "A": AnswerA,
+                        "AAAA": AnswerAAAA,
+                        "CNAME": AnswerCNAME,
+                        "DS": AnswerDS,
                         "SOA": SoaAnswer,
-                }.get(self.question['qtype'], DnsAnswer)(self.probe_id, ans)
+                }.get(self.question['qtype'], DnsAnswer)(self.probe_id, ans))
 
     def check_rcode(self, rcode, message):
         """Check the RCODE is the same as rcode"""
@@ -331,13 +485,32 @@ class DnsMeasurment(Measurment):
     def check(self, args, message):
         """Main Check routine"""
         Measurment.check(self, args, message)
+        a_record = False
+        aaaa_record = False
+        cname_record = False
+
         if args.rcode:
             self.check_rcode(args.rcode, message)
         if args.flags:
             self.check_flags(args.flags, message)
         if self.rcode == "NOERROR":
-            self.answer.check(args, message)
-
+            for ans in self.answer:
+                ans.check(args, message)
+                if hasattr(args, 'a_record') and ans.rrtype == "A":
+                    a_record = True
+                if hasattr(args, 'aaaa_record') and ans.rrtype == "AAAA":
+                    aaaa_record = True
+                if hasattr(args, 'cname_record') and ans.rrtype == "CNAME":
+                    cname_record = True
+        if hasattr(args, 'a_record') and not a_record:
+            message.add_error(self.msg % (
+                self.probe_id, "No A Records Found", ""))
+        if hasattr(args, 'aaaa_record') and not aaaa_record:
+            message.add_error(self.msg % (
+                self.probe_id, "No AAAA Records Found", ""))
+        if hasattr(args, 'cname_record') and not cname_record:
+            message.add_warn(self.msg % (
+                self.probe_id, "No CNAME Records Found", ""))
 
 class JsonRequest(urllib2.Request):
     '''Object to make a Json HTTP request'''
@@ -380,7 +553,11 @@ def parse_measurements(measurements, measurement_type, message):
             continue
         parsed_measurements.append(
             {
-                'soa': DnsMeasurment,
+                'a': MeasurmentDns,
+                'aaaa': MeasurmentDns,
+                'cname': MeasurmentDns,
+                'ds': MeasurmentDns,
+                'soa': MeasurmentDns,
                 'http': HttpMeasurment,
                 'ping': PingMeasurment,
                 'ssl': SSLcertMeasurment,
@@ -445,9 +622,93 @@ def arg_parse():
     #DNS args
     subparsers_dns = parser_dns.add_subparsers(
             title='Supported DNS checks', dest='name')
-    parser_dns_soa = subparsers_dns.add_parser('soa', help='soa check')
+    parser_dns_a = subparsers_dns.add_parser('a', 
+            help='a record check')
+    parser_dns_aaaa = subparsers_dns.add_parser('aaaa', 
+            help='aaaa record check')
+    parser_dns_cname = subparsers_dns.add_parser('cname', 
+            help='cname record check')
+    parser_dns_ds = subparsers_dns.add_parser('ds', 
+            help='ds record check')
+    parser_dns_soa = subparsers_dns.add_parser('soa', 
+            help='soa record check')
 
-    #DNS SOA OPTIONS
+    #DNS A OPTIONS
+    parser_dns_a.add_argument('-v', '--verbose', action='count',
+            help='increase verbosity')
+    parser_dns_a.add_argument("measurement_id", 
+            help="Measuerment ID to check")
+    parser_dns_a.add_argument('--max_measurement_age', type=int, default=30,
+            help='The max age of a measuerment in unix time')
+    parser_dns_a.add_argument('--flags',
+            help='The max age of a measuerment in unix time')
+    parser_dns_a.add_argument('--rcode',
+            help='The max age of a measuerment in unix time')
+    parser_dns_a.add_argument('--cname-record',
+            help='Ensure the RR set from the answer \
+                     contains a CNAME record with this string')
+    parser_dns_a.add_argument('--a-record',
+            help='Ensure the RR set from the answer \
+                     contains a A record with this string')
+    #DNS AAAA OPTIONS
+    parser_dns_aaaa.add_argument('-v', '--verbose', action='count',
+            help='increase verbosity')
+    parser_dns_aaaa.add_argument("measurement_id", 
+            help="Measuerment ID to check")
+    parser_dns_aaaa.add_argument('--max_measurement_age', type=int, default=30,
+            help='The max age of a measuerment in unix time')
+    parser_dns_aaaa.add_argument('--flags',
+            help='The max age of a measuerment in unix time')
+    parser_dns_aaaa.add_argument('--rcode',
+            help='The max age of a measuerment in unix time')
+    parser_dns_aaaa.add_argument('--cname-record',
+            help='Ensure the RR set from the answer \
+                     contains a CNAME record with this string')
+    parser_dns_aaaa.add_argument('--aaaa-record',
+            help='Ensure the RR set from the answer \
+                     contains a A record with this string')
+
+    #DNS CNAME OPTIONS
+    parser_dns_cname.add_argument('-v', '--verbose', action='count',
+            help='increase verbosity')
+    parser_dns_cname.add_argument("measurement_id", 
+            help="Measuerment ID to check")
+    parser_dns_cname.add_argument('--max_measurement_age', type=int, default=30,
+            help='The max age of a measuerment in unix time')
+    parser_dns_cname.add_argument('--flags',
+            help='The max age of a measuerment in unix time')
+    parser_dns_cname.add_argument('--rcode',
+            help='The max age of a measuerment in unix time')
+    parser_dns_cname.add_argument('--cname-record',
+            help='Ensure the RR set from the answer \
+                     contains a CNAME record with this string')
+
+    #DNS DS OPTIONS
+    parser_dns_ds.add_argument('-v', '--verbose', action='count',
+            help='increase verbosity')
+    parser_dns_ds.add_argument("measurement_id", 
+            help="Measuerment ID to check")
+    parser_dns_ds.add_argument('--max_measurement_age', type=int, default=30,
+            help='The max age of a measuerment in unix time')
+    parser_dns_ds.add_argument('--flags',
+            help='The max age of a measuerment in unix time')
+    parser_dns_ds.add_argument('--rcode',
+            help='The max age of a measuerment in unix time')
+    parser_dns_ds.add_argument('--keytag',
+            help='Ensure the RR set from the answer \
+                     contains a keytag record with this string')
+    parser_dns_ds.add_argument('--algorithm',
+            help='Ensure the RR set from the answer \
+                     contains a algorithm record with this string')
+    parser_dns_ds.add_argument('--digest_type',
+            help='Ensure the RR set from the answer \
+                     contains a digest type record with this string')
+    parser_dns_ds.add_argument('--digest',
+            help='Ensure the RR set from the answer \
+                     contains a digest record with this string')
+
+
+     #DNS SOA OPTIONS
     parser_dns_soa.add_argument('-v', '--verbose', action='count',
             help='increase verbosity')
     parser_dns_soa.add_argument("measurement_id", 
