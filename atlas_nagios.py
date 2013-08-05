@@ -267,7 +267,7 @@ class MeasurmentHTTP(Measurment):
             self.check_status(args.status_code, message)
 
 
-class DnsAnswer:
+class AnswerDns:
     """Parent class to hold dns measuerment payloads"""
 
     def __init__(self, probe_id, answer):
@@ -296,10 +296,10 @@ class DnsAnswer:
         raise NotImplementedError("Subclasses should implement this!")
 
 
-class SoaAnswer(DnsAnswer):
+class AnswerDnsSOA(AnswerDns):
     """Parent class to hold dns SOA measuerment payloads"""
     def __init__(self, probe_id, answer ):
-        DnsAnswer.__init__(self, probe_id, answer)
+        AnswerDns.__init__(self, probe_id, answer)
         try:
             if "SOA" == self.answer.split()[3]:
                 self.qname, self.ttl, _,  self.rrtype, self.mname, \
@@ -340,10 +340,10 @@ class SoaAnswer(DnsAnswer):
                         self.nxdomain, args.nxdomain, message) 
 
 
-class AnswerA(DnsAnswer):
+class AnswerDnsA(AnswerDns):
     """Parent class to hold dns A measuerment payloads"""
     def __init__(self, probe_id, answer ):
-        DnsAnswer.__init__(self, probe_id, answer)
+        AnswerDns.__init__(self, probe_id, answer)
         try:
             if "A" == self.answer.split()[3]:
                 self.qname, self.ttl, _, self.rrtype, \
@@ -371,10 +371,10 @@ class AnswerA(DnsAnswer):
                         self.rdata, args.a_record, message) 
 
 
-class AnswerAAAA(DnsAnswer):
+class AnswerDnsAAAA(AnswerDns):
     """Parent class to hold dns A measuerment payloads"""
     def __init__(self, probe_id, answer ):
-        DnsAnswer.__init__(self, probe_id, answer)
+        AnswerDns.__init__(self, probe_id, answer)
         try:
             if "AAAA" == self.answer.split()[3]:
                 self.qname, self.ttl, _, self.rrtype, \
@@ -402,10 +402,10 @@ class AnswerAAAA(DnsAnswer):
                         self.rdata, args.aaaa_record, message) 
 
 
-class AnswerCNAME(DnsAnswer):
+class AnswerDnsCNAME(AnswerDns):
     """Parent class to hold dns CNAME measuerment payloads"""
     def __init__(self, probe_id, answer ):
-        DnsAnswer.__init__(self, probe_id, answer)
+        AnswerDns.__init__(self, probe_id, answer)
         try:
             if "CNAME" == self.answer.split()[3]:
                 self.qname, self.ttl, _, self.rrtype, \
@@ -427,10 +427,10 @@ class AnswerCNAME(DnsAnswer):
                         self.rdata, args.cname_record, message) 
  
 
-class AnswerDNSKEY(DnsAnswer):
+class AnswerDNSKEY(AnswerDns):
     """Parent class to hold dns DNSKEY measuerment payloads"""
     def __init__(self, probe_id, answer ):
-        DnsAnswer.__init__(self, probe_id, answer)
+        AnswerDns.__init__(self, probe_id, answer)
         try:
             if "DNSKEY" == self.answer.split()[3]:
                 self.qname, self.ttl, _, self.rrtype, \
@@ -452,10 +452,10 @@ class AnswerDNSKEY(DnsAnswer):
                         self.rdata, args.cname_record, message) 
  
 
-class AnswerDS(DnsAnswer):
+class AnswerDnsDS(AnswerDns):
     """Parent class to hold dns DS measuerment payloads"""
     def __init__(self, probe_id, answer ):
-        DnsAnswer.__init__(self, probe_id, answer)
+        AnswerDns.__init__(self, probe_id, answer)
         try:
             if "DS" == self.answer.split()[3]:
                 self.qname, self.ttl, _, self.rrtype, self.keytag, \
@@ -509,12 +509,12 @@ class MeasurmentDns(Measurment):
                 answer = self.payload[2]['answer']
             for ans in answer:
                 self.answer.append({
-                        "A": AnswerA,
-                        "AAAA": AnswerAAAA,
-                        "CNAME": AnswerCNAME,
-                        "DS": AnswerDS,
-                        "SOA": SoaAnswer,
-                }.get(self.question['qtype'], DnsAnswer)(self.probe_id, ans))
+                        "A": AnswerDnsA,
+                        "AAAA": AnswerDnsAAAA,
+                        "CNAME": AnswerDnsCNAME,
+                        "DS": AnswerDnsDS,
+                        "SOA": AnswerDnsSOA,
+                }.get(self.question['qtype'], AnswerDns)(self.probe_id, ans))
 
     def check_rcode(self, rcode, message):
         """Check the RCODE is the same as rcode"""
