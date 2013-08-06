@@ -137,6 +137,16 @@ class Measurment:
         self.check_time = self.payload[1]
         self.msg = "Probe (%s): %s (%s)" 
 
+    @staticmethod
+    def add_args(parser):
+        """add SSL arguments"""
+        parser.add_argument('-v', '--verbose', action='count',
+                help='increase verbosity')
+        parser.add_argument("measurement_id",
+                help="Measuerment ID to check")
+        parser.add_argument('--max_measurement_age', type=int, default=30,
+                help='The max age of a measuerment in unix time')
+
     def check_measurement_age(self, max_age, message):
         """Check if a measerment is fresh enough"""
         min_time = time.time() - max_age
@@ -176,6 +186,18 @@ class MeasurmentSSL(Measurment):
         self.expiry = time.mktime(
                 time.strptime(self.payload[2][0][4],"%Y%m%d%H%M%SZ"))
         self.sha1 = self.payload[2][0][5]
+
+    @staticmethod
+    def add_args(subparser):
+        """add SSL arguments"""
+        parser = subparser.add_parser('ssl', help='SSL check')
+        Measurment.add_args(parser)
+        parser.add_argument('--common_name',
+                help='Ensure a cert has this cn')
+        parser.add_argument('--sslexpiry', type=int, default=30,
+                help="Ensure certificate dosne't expire in x days")
+        parser.add_argument('--sha1hash',
+                help="Ensure certificate has this sha1 hash")
 
     def check_expiry(self, warn_expiry, message):
         """Check if the certificat is going to expire before warn_expiry"""
@@ -668,24 +690,11 @@ def arg_parse():
             title="Supported Measuerment types", dest='name')
 
     #measuerement types
-    parser_ssl = subparsers.add_parser('ssl', help='SSL check')
+    MeasurmentSSL.add_args(subparsers)
     parser_http = subparsers.add_parser('http', help='HTTP check')
     parser_ping = subparsers.add_parser('ping', help='Ping check')
     parser_dns = subparsers.add_parser('dns', help='DNS check')
 
-    #ssl args
-    parser_ssl.add_argument('-v', '--verbose', action='count',
-            help='increase verbosity')
-    parser_ssl.add_argument("measurement_id",
-            help="Measuerment ID to check")
-    parser_ssl.add_argument('--max_measurement_age', type=int, default=30,
-            help='The max age of a measuerment in unix time')
-    parser_ssl.add_argument('--common_name',
-            help='Ensure a cert has this cn')
-    parser_ssl.add_argument('--sslexpiry', type=int, default=30,
-            help="Ensure certificate dosne't expire in x days")
-    parser_ssl.add_argument('--sha1hash',
-            help="Ensure certificate has this sha1 hash")
     #Ping args
     parser_ping.add_argument('-v', '--verbose', action='count',
             help='increase verbosity')
