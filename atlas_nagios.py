@@ -236,6 +236,18 @@ class MeasurmentPing(Measurment):
         Measurment.__init__(self, probe_id, payload)
         self.avg_rtt = self.payload[0]
 
+    @staticmethod
+    def add_args(subparser):
+        """add SSL arguments"""
+        parser = subparser.add_parser('ping', help='SSL check')
+        Measurment.add_args(parser)
+        parser.add_argument('--rtt_max',
+                help='Ensure the max ttl is below this')
+        parser.add_argument('--rtt_min',
+                help='Ensure the min ttl is below this')
+        parser.add_argument('--rtt_avg',
+                help='Ensure the avg ttl is below this')
+
     def check_rtt(self, check_type, rtt, message):
         """Check the return trip time islower then rtt"""
         msg = "desierd (%s), real (%s)" % (rtt, self.avg_rtt)
@@ -691,23 +703,10 @@ def arg_parse():
 
     #measuerement types
     MeasurmentSSL.add_args(subparsers)
+    MeasurmentPing.add_args(subparsers)
     parser_http = subparsers.add_parser('http', help='HTTP check')
-    parser_ping = subparsers.add_parser('ping', help='Ping check')
     parser_dns = subparsers.add_parser('dns', help='DNS check')
 
-    #Ping args
-    parser_ping.add_argument('-v', '--verbose', action='count',
-            help='increase verbosity')
-    parser_ping.add_argument("measurement_id",
-            help="Measuerment ID to check")
-    parser_ping.add_argument('--max_measurement_age', type=int, default=30,
-            help='The max age of a measuerment in unix time')
-    parser_ping.add_argument('--rtt_max',
-            help='Ensure the max ttl is below this')
-    parser_ping.add_argument('--rtt_min',
-            help='Ensure the min ttl is below this')
-    parser_ping.add_argument('--rtt_avg',
-            help='Ensure the avg ttl is below this')
     #HTTP args
     parser_http.add_argument('-v', '--verbose', action='count',
             help='increase verbosity')
