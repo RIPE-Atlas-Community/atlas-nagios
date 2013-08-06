@@ -286,6 +286,14 @@ class MeasurmentHTTP(Measurment):
                 #probably a time out, should use a better status code
                 self.status = 500
 
+    @staticmethod
+    def add_args(subparser):
+        """add SSL arguments"""
+        parser = subparser.add_parser('http', help='SSL check')
+        Measurment.add_args(parser)
+        parser.add_argument('--status_code', type=int, default=200,
+                help='Ensure the site returns this status code')
+
     def check_status(self, check_status, message):
         """check the HTTP status is the same as check_status"""
         msg = "%s: desierd (%s), real (%s)" % \
@@ -704,18 +712,11 @@ def arg_parse():
     #measuerement types
     MeasurmentSSL.add_args(subparsers)
     MeasurmentPing.add_args(subparsers)
-    parser_http = subparsers.add_parser('http', help='HTTP check')
+    MeasurmentHTTP.add_args(subparsers)
     parser_dns = subparsers.add_parser('dns', help='DNS check')
 
     #HTTP args
-    parser_http.add_argument('-v', '--verbose', action='count',
-            help='increase verbosity')
-    parser_http.add_argument("measurement_id", help="Measuerment ID to check")
-    parser_http.add_argument('--max_measurement_age', type=int, default=30,
-            help='The max age of a measuerment in unix time')
-    parser_http.add_argument('--status_code', type=int, default=200,
-            help='Ensure the site returns this status code')
-    #DNS args
+   #DNS args
     subparsers_dns = parser_dns.add_subparsers(
             title='Supported DNS checks', dest='name')
     parser_dns_a = subparsers_dns.add_parser('a', 
