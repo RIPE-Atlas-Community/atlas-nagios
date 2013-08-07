@@ -330,6 +330,12 @@ class AnswerDns:
         except IndexError:
             print self.answer
 
+    @staticmethod
+    def add_args(subparser):
+        """add DNS arguments"""
+        parser = subparser.add_parser('dns', help='SSL check')
+        Measurment.add_args(parser)
+
     def check_string(self, check_type, 
             measurment_string, check_string, message):
         """Generic function to compare two strings"""
