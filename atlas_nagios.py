@@ -51,6 +51,7 @@ def parse_measurements(measurements, measurement_type, message):
                 'aaaa': MeasurmentDnsAAAA,
                 'cname': MeasurmentDnsCNAME,
                 'ds': MeasurmentDnsDS,
+                'dnskey' : MeasurementDnsDNSKEY,
                 'soa': MeasurmentDnsSOA,
                 'http': MeasurmentHTTP,
                 'ping': MeasurmentPing,
@@ -476,7 +477,7 @@ class AnswerDnsCNAME(AnswerDns):
                         self.rdata, args.cname_record, message) 
  
 
-class AnswerDNSKEY(AnswerDns):
+class AnswerDnsDNSKEY(AnswerDns):
     """Parent class to hold dns DNSKEY measuerment payloads"""
     def __init__(self, probe_id, answer ):
         AnswerDns.__init__(self, probe_id, answer)
@@ -673,10 +674,23 @@ class MeasurmentDnsDS(MeasurmentDns):
             self.answer.append(AnswerDnsDS(self.probe_id, ans))
 
     def check(self, args, message):
-        MeasurmentDns.check(self, args, message)
+        MeasurementDns.check(self, args, message)
         for ans in self.answer:
             ans.check(args, message)
 
+class MeasurementDnsDNSKEY(MeasurementDns):
+    """class for a dns DNSKEY measurement"""
+
+    def __init__(self, probe_id, payload):
+        """Initiate Object"""
+        MeasurementDns.__init__(self, probe_id, payload)
+        for ans in self.answer_raw:
+            self.answer.append(AnswerDnsDNSKEY(self.probe_id, ans))
+
+    def check(self, args, message):
+        MeasurementDns.check(self.args, message)
+        for ans in self.answer:
+            ans.check(args, message)
 
 class MeasurmentDnsSOA(MeasurmentDns):
     """class for a dns SOA measuerment"""
