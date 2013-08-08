@@ -561,6 +561,16 @@ class MeasurmentDns(Measurment):
         if self.rcode == "NOERROR":
             self.answer_raw = ensure_list(self.payload[2]['answer'])
 
+    @staticmethod
+    def add_args(parser):
+        """add default dns args"""
+        Measurment.add_args(parser)
+        parser.add_argument('--flags',
+                help='Coma seperated list o flags to expect')
+        parser.add_argument('--rcode',
+                help='rcode to expect')
+
+
     def check_rcode(self, rcode, message):
         """Check the RCODE is the same as rcode"""
         msg = "desierd (%s), real (%s)" % ( rcode, self.rcode)
@@ -601,6 +611,17 @@ class MeasurmentDnsA(MeasurmentDns):
         for ans in self.answer_raw:
             self.answer.append(AnswerDnsA(self.probe_id, ans))
 
+    @staticmethod
+    def add_args(subparser):
+        parser = subparser.add_parser('A', help='A DNS check')
+        MeasurmentDns.add_args(parser)
+        parser.add_argument('--cname-record',
+                help='Ensure the RR set from the answer \
+                        contains a CNAME record with this string')
+        parser.add_argument('--a-record',
+                help='Ensure the RR set from the answer \
+                        contains a A record with this string')
+
     def check(self, args, message):
         a_record = False
         cname_record = False
@@ -628,6 +649,18 @@ class MeasurmentDnsAAAA(MeasurmentDns):
         MeasurmentDns.__init__(self, probe_id, payload)
         for ans in self.answer_raw:
             self.answer.append(AnswerDnsAAAA(self.probe_id, ans))
+
+    @staticmethod
+    def add_args(subparser):
+        parser = subparser.add_parser('AAAA', help='AAAA DNS check')
+        MeasurmentDns.add_args(parser)
+        parser.add_argument('--cname-record',
+                help='Ensure the RR set from the answer \
+                        contains a CNAME record with this string')
+        parser.add_argument('--aaaa-record',
+                help='Ensure the RR set from the answer \
+                        contains a A record with this string')
+
 
     def check(self, args, message):
         aaaa_record = False
@@ -657,6 +690,14 @@ class MeasurmentDnsCNAME(MeasurmentDns):
         for ans in self.answer_raw:
             self.answer.append(AnswerDnsCNAME(self.probe_id, ans))
 
+    @staticmethod
+    def add_args(subparser):
+        parser = subparser.add_parser('CNAME', help='CNAME DNS check')
+        MeasurmentDns.add_args(parser)
+        parser.add_argument('--cname-record',
+                help='Ensure the RR set from the answer \
+                        contains a CNAME record with this string')
+
     def check(self, args, message):
         cname_record = False
         MeasurmentDns.check(self, args, message)
@@ -679,22 +720,44 @@ class MeasurmentDnsDS(MeasurmentDns):
         for ans in self.answer_raw:
             self.answer.append(AnswerDnsDS(self.probe_id, ans))
 
+    @staticmethod
+    def add_args(subparser):
+        parser = subparser.add_parser('DS', help='CNAME DS check')
+        MeasurmentDns.add_args(parser)
+        parser.add_argument('--keytag',
+                help='Ensure the RR set from the answer \
+                        contains a keytag record with this string')
+        parser.add_argument('--algorithm',
+                help='Ensure the RR set from the answer \
+                        contains a algorithm record with this string')
+        parser.add_argument('--digest_type',
+                help='Ensure the RR set from the answer \
+                        contains a digest type record with this string')
+        parser.add_argument('--digest',
+                help='Ensure the RR set from the answer \
+                        contains a digest record with this string')
+
     def check(self, args, message):
-        MeasurementDns.check(self, args, message)
+        MeasurmentDns.check(self, args, message)
         for ans in self.answer:
             ans.check(args, message)
 
-class MeasurementDnsDNSKEY(MeasurementDns):
+class MeasurmentDnsDNSKEY(MeasurmentDns):
     """class for a dns DNSKEY measurement"""
 
     def __init__(self, probe_id, payload):
         """Initiate Object"""
-        MeasurementDns.__init__(self, probe_id, payload)
+        MeasurmentDns.__init__(self, probe_id, payload)
         for ans in self.answer_raw:
             self.answer.append(AnswerDnsDNSKEY(self.probe_id, ans))
 
+    @staticmethod
+    def add_args(subparser):
+        parser = subparser.add_parser('DNSKEY', help='CNAME DNSKEY check')
+        MeasurmentDns.add_args(parser)
+
     def check(self, args, message):
-        MeasurementDns.check(self.args, message)
+        MeasurmentDns.check(self, args, message)
         for ans in self.answer:
             ans.check(args, message)
 
@@ -707,6 +770,25 @@ class MeasurmentDnsSOA(MeasurmentDns):
         MeasurmentDns.__init__(self, probe_id, payload)
         for ans in self.answer_raw:
             self.answer.append(AnswerDnsSOA(self.probe_id, ans))
+
+    @staticmethod
+    def add_args(subparser):
+        parser = subparser.add_parser('SOA', help='CNAME SOA check')
+        MeasurmentDns.add_args(parser)
+        parser.add_argument('--mname',
+                help='Ensure the soa has this mname')
+        parser.add_argument('--rname',
+                help='Ensure the soa has this rname')
+        parser.add_argument('--serial',
+                help='Ensure the soa has this serial')
+        parser.add_argument('--refresh',
+                help='Ensure the soa has this refresh')
+        parser.add_argument('--update',
+                help='Ensure the soa has this update')
+        parser.add_argument('--expire',
+                help='Ensure the soa has this expire')
+        parser.add_argument('--nxdomain',
+                help='Ensure the soa has this nxdomain')
 
     def check(self, args, message):
         MeasurmentDns.check(self, args, message)
@@ -733,123 +815,16 @@ def arg_parse():
     MeasurmentSSL.add_args(subparsers)
     MeasurmentPing.add_args(subparsers)
     MeasurmentHTTP.add_args(subparsers)
-    parser_dns = subparsers.add_parser('dns', help='DNS check')
+    dns_parser = subparsers.add_parser('dns', help='DNS check')
+    dns_subparsers = dns_parser.add_subparsers( 
+            title="Supported DNS Measuerment types", dest='name')
+    MeasurmentDnsA.add_args(dns_subparsers)
+    MeasurmentDnsAAAA.add_args(dns_subparsers)
+    MeasurmentDnsCNAME.add_args(dns_subparsers)
+    MeasurmentDnsDS.add_args(dns_subparsers)
+    MeasurmentDnsDNSKEY.add_args(dns_subparsers)
+    MeasurmentDnsSOA.add_args(dns_subparsers)
 
-    #HTTP args
-   #DNS args
-    subparsers_dns = parser_dns.add_subparsers(
-            title='Supported DNS checks', dest='name')
-    parser_dns_a = subparsers_dns.add_parser('a', 
-            help='a record check')
-    parser_dns_aaaa = subparsers_dns.add_parser('aaaa', 
-            help='aaaa record check')
-    parser_dns_cname = subparsers_dns.add_parser('cname', 
-            help='cname record check')
-    parser_dns_ds = subparsers_dns.add_parser('ds', 
-            help='ds record check')
-    parser_dns_soa = subparsers_dns.add_parser('soa', 
-            help='soa record check')
-
-    #DNS A OPTIONS
-    parser_dns_a.add_argument('-v', '--verbose', action='count',
-            help='increase verbosity')
-    parser_dns_a.add_argument("measurement_id", 
-            help="Measuerment ID to check")
-    parser_dns_a.add_argument('--max_measurement_age', type=int, default=30,
-            help='The max age of a measuerment in unix time')
-    parser_dns_a.add_argument('--flags',
-            help='The max age of a measuerment in unix time')
-    parser_dns_a.add_argument('--rcode',
-            help='The max age of a measuerment in unix time')
-    parser_dns_a.add_argument('--cname-record',
-            help='Ensure the RR set from the answer \
-                     contains a CNAME record with this string')
-    parser_dns_a.add_argument('--a-record',
-            help='Ensure the RR set from the answer \
-                     contains a A record with this string')
-    #DNS AAAA OPTIONS
-    parser_dns_aaaa.add_argument('-v', '--verbose', action='count',
-            help='increase verbosity')
-    parser_dns_aaaa.add_argument("measurement_id", 
-            help="Measuerment ID to check")
-    parser_dns_aaaa.add_argument('--max_measurement_age', type=int, default=30,
-            help='The max age of a measuerment in unix time')
-    parser_dns_aaaa.add_argument('--flags',
-            help='The max age of a measuerment in unix time')
-    parser_dns_aaaa.add_argument('--rcode',
-            help='The max age of a measuerment in unix time')
-    parser_dns_aaaa.add_argument('--cname-record',
-            help='Ensure the RR set from the answer \
-                     contains a CNAME record with this string')
-    parser_dns_aaaa.add_argument('--aaaa-record',
-            help='Ensure the RR set from the answer \
-                     contains a A record with this string')
-
-    #DNS CNAME OPTIONS
-    parser_dns_cname.add_argument('-v', '--verbose', action='count',
-            help='increase verbosity')
-    parser_dns_cname.add_argument("measurement_id", 
-            help="Measuerment ID to check")
-    parser_dns_cname.add_argument('--max_measurement_age', type=int, default=30,
-            help='The max age of a measuerment in unix time')
-    parser_dns_cname.add_argument('--flags',
-            help='The max age of a measuerment in unix time')
-    parser_dns_cname.add_argument('--rcode',
-            help='The max age of a measuerment in unix time')
-    parser_dns_cname.add_argument('--cname-record',
-            help='Ensure the RR set from the answer \
-                     contains a CNAME record with this string')
-
-    #DNS DS OPTIONS
-    parser_dns_ds.add_argument('-v', '--verbose', action='count',
-            help='increase verbosity')
-    parser_dns_ds.add_argument("measurement_id", 
-            help="Measuerment ID to check")
-    parser_dns_ds.add_argument('--max_measurement_age', type=int, default=30,
-            help='The max age of a measuerment in unix time')
-    parser_dns_ds.add_argument('--flags',
-            help='The max age of a measuerment in unix time')
-    parser_dns_ds.add_argument('--rcode',
-            help='The max age of a measuerment in unix time')
-    parser_dns_ds.add_argument('--keytag',
-            help='Ensure the RR set from the answer \
-                     contains a keytag record with this string')
-    parser_dns_ds.add_argument('--algorithm',
-            help='Ensure the RR set from the answer \
-                     contains a algorithm record with this string')
-    parser_dns_ds.add_argument('--digest_type',
-            help='Ensure the RR set from the answer \
-                     contains a digest type record with this string')
-    parser_dns_ds.add_argument('--digest',
-            help='Ensure the RR set from the answer \
-                     contains a digest record with this string')
-
-
-     #DNS SOA OPTIONS
-    parser_dns_soa.add_argument('-v', '--verbose', action='count',
-            help='increase verbosity')
-    parser_dns_soa.add_argument("measurement_id", 
-            help="Measuerment ID to check")
-    parser_dns_soa.add_argument('--max_measurement_age', type=int, default=30,
-            help='The max age of a measuerment in unix time')
-    parser_dns_soa.add_argument('--flags',
-            help='The max age of a measuerment in unix time')
-    parser_dns_soa.add_argument('--rcode',
-            help='The max age of a measuerment in unix time')
-    parser_dns_soa.add_argument('--mname',
-            help='Ensure the soa has this mname')
-    parser_dns_soa.add_argument('--rname',
-            help='Ensure the soa has this rname')
-    parser_dns_soa.add_argument('--serial',
-            help='Ensure the soa has this serial')
-    parser_dns_soa.add_argument('--refresh',
-            help='Ensure the soa has this refresh')
-    parser_dns_soa.add_argument('--update',
-            help='Ensure the soa has this update')
-    parser_dns_soa.add_argument('--expire',
-            help='Ensure the soa has this expire')
-    parser_dns_soa.add_argument('--nxdomain',
-            help='Ensure the soa has this nxdomain')
     return parser.parse_args()
 
 
