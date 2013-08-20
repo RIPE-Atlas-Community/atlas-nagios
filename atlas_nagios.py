@@ -145,7 +145,15 @@ class Measurment:
                 help='increase verbosity')
         parser.add_argument("measurement_id",
                 help="Measuerment ID to check")
-        parser.add_argument('--max_measurement_age', type=int, default=30,
+        parser.add_argument('-w', '--warn-probes', type=int, default=2,
+                help='WARN if # probes have a warn considtion')
+        parser.add_argument('-c', '--crit-probes', type=int, default=1,
+                help='ERROR if # probes have a warn considtion')
+        parser.add_argument('-W', '--warn-mesuerment', type=int, default=2,
+                help='WARN if # mesuerment have a warn considtion')
+        parser.add_argument('-C', '--crit-mesuerment', type=int, default=1,
+                help='ERROR if # mesuerment have a warn considtion')
+        parser.add_argument('--max_measurement_age', type=int, default=3600,
                 help='The max age of a measuerment in unix time')
 
     def check_measurement_age(self, max_age, message):
