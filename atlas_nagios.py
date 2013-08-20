@@ -51,7 +51,7 @@ def parse_measurements(measurements, measurement_type, message):
                 'aaaa': MeasurmentDnsAAAA,
                 'cname': MeasurmentDnsCNAME,
                 'ds': MeasurmentDnsDS,
-                'dnskey' : MeasurementDnsDNSKEY,
+                'dnskey' : MeasurmentDnsDNSKEY,
                 'soa': MeasurmentDnsSOA,
                 'http': MeasurmentHTTP,
                 'ping': MeasurmentPing,
@@ -742,6 +742,7 @@ class MeasurmentDnsDS(MeasurmentDns):
         for ans in self.answer:
             ans.check(args, message)
 
+      
 class MeasurmentDnsDNSKEY(MeasurmentDns):
     """class for a dns DNSKEY measurement"""
 
