@@ -8,7 +8,7 @@ import json
 
 
 def ensure_list(list_please):
-    """make @list_please a slit if it isn't one already"""
+    """make @list_please a list if it isn't one already"""
     if type(list_please) != list:
         return [(list_please)]
     else:
@@ -42,8 +42,7 @@ def parse_measurements(measurements, measurement_type, message):
     for measurement in measurements:
         probe_id = measurement[1]
         if measurement[5] == None:
-            message.add_error(
-                    "Probe (%s) has no data" % (probe_id))
+            message.add_error(probe_id, "No data")
             continue
         parsed_measurements.append(
             {
@@ -66,6 +65,73 @@ def check_measurements(measurements, args, message):
     '''check the measuerment'''
     for measurement in measurements:
         measurement.check(args, message)
+
+class ProbeMessage:
+    """Object to store nagios messages"""
+    def __init__(self, verbose):
+        """
+        Initialise Object
+        verbose is an interger indicating how Much information to return
+        """
+        #need to group these by probe id
+        self.error = dict()
+        self.warn = dict()
+        self.ok = dict()
+        self.verbose = verbose
+
+    def add_error(self, probe, message):
+        """Add an error message"""
+        try:
+            self.error[probe].append(message)
+        except KeyError:
+            self.error[probe] = [message]
+
+    def add_warn(self, probe, message):
+        """Add an warn message"""
+        try:
+            self.warn[probe].append(message)
+        except KeyError:
+            self.warn[probe] = [message]
+
+    def add_ok(self, probe, message):
+        """Add an ok message"""
+        try:
+            self.ok[probe].append(message)
+        except KeyError:
+            self.ok[probe] = [message]
+
+    def exit(self):
+        """Parse the message and exit correctly for nagios"""
+        if len(self.error) > 0:
+            if self.verbose > 0:
+                print "ERROR: %d: %s" % (len(self.error),
+                        ", ".join(self.error))
+                if self.verbose > 1:
+                    print "WARN: %d: %s" % (len(self.warn),
+                            ", ".join(self.warn))
+                    print "OK: %d: %s" % (len(self.ok),
+                        ", ".join(self.ok))
+
+            else:
+                print "ERROR: %d" % len(self.error)
+            sys.exit(2)
+        elif len(self.warn) > 0:
+            if self.verbose > 0:
+                print "WARN: %d: %s" % (len(self.warn),
+                        ", ".join(self.warn))
+                if self.verbose > 1:
+                    print "OK: %d: %s" % (len(self.ok),
+                        ", ".join(self.ok))
+            else:
+                print "WARN: %d" % len(self.warn)
+            sys.exit(1)
+        else:
+            if self.verbose > 1:
+                print "OK: %d: %s" % (len(self.ok),
+                    ", ".join(self.ok))
+            else:
+                print "OK: %d" % len(self.ok)
+            sys.exit(0)
 
 
 
@@ -136,7 +202,7 @@ class Measurment:
         self.probe_id = probe_id
         self.payload = payload
         self.check_time = self.payload[1]
-        self.msg = "Probe (%s): %s (%s)" 
+        self.msg = "%s (%s)" 
 
     @staticmethod
     def add_args(parser):
@@ -161,21 +227,21 @@ class Measurment:
         min_time = time.time() - max_age
         check_time_str = time.ctime(self.check_time)
         if self.check_time < min_time:
-            message.add_error(self.msg % \
-                    (self.probe_id, "measurement to old", check_time_str))
+            message.add_error(self.probe_id, self.msg % \
+                    ("measurement to old", check_time_str))
         else:
-            message.add_ok(self.msg % \
-                    (self.probe_id, "measurement fresh", check_time_str))
+            message.add_ok(self.probe_id, self.msg % \
+                    ("measurement fresh", check_time_str))
 
     def check_string(self, check_string, measurment_string, 
             check_type, message):
         """Generic check to compare two strings"""
         if check_string == measurment_string:
-            message.add_ok(self.msg % \
-                    (self.probe_id, check_type, measurment_string))
+            message.add_ok(self.probe_id, self.msg % \
+                    (check_type, measurment_string))
         else:
-            message.add_error(self.msg % \
-                     (self.probe_id, check_type, measurment_string))
+            message.add_error(self.probe_id, self.msg % \
+                     (check_type, measurment_string))
 
     def check(self, args, message):             
         """main check fucntion"""
@@ -214,14 +280,14 @@ class MeasurmentSSL(Measurment):
         warn_time = current_time - (warn_expiry * 60 * 60 * 24)
         expiry_str = time.ctime(self.expiry)
         if self.expiry < current_time:
-            message.add_error(self.msg % (
-                    self.probe_id, "certificate expierd", expiry_str))
+            message.add_error(self.probe_id, self.msg % (
+                    "certificate expierd", expiry_str))
         elif self.expiry < warn_time:
-            message.add_warn(self.msg % (
-                    self.probe_id, "certificate expires soon", expiry_str))
+            message.add_warn(self.probe_id, self.msg % (
+                    "certificate expires soon", expiry_str))
         else:
-            message.add_ok(self.msg % (
-                    self.probe_id, "certificate expiry good", expiry_str))
+            message.add_ok(self.probe_id, self.msg % (
+                    "certificate expiry good", expiry_str))
 
     def check(self, args, message):
         """Main SSL check routine"""
@@ -261,11 +327,11 @@ class MeasurmentPing(Measurment):
         """Check the return trip time islower then rtt"""
         msg = "desierd (%s), real (%s)" % (rtt, self.avg_rtt)
         if self.avg_rtt < rtt:
-            message.add_ok(self.msg % (
-                    self.probe_id, msg, "Ping %s" % check_type))
+            message.add_ok(self.probe_id, self.msg % (
+                     msg, "Ping %s" % check_type))
         else:
-            message.add_error(self.msg % (
-                    self.probe_id, msg, "Ping %s" % check_type))
+            message.add_error(self.probe_id, self.msg % (
+                    msg, "Ping %s" % check_type))
 
     def check(self, args, message):
         """Main ping check routine"""
@@ -305,18 +371,18 @@ class MeasurmentHTTP(Measurment):
 
     def check_status(self, check_status, message):
         """check the HTTP status is the same as check_status"""
-        msg = "%s: desierd (%s), real (%s)" % \
-                (self.probe_id, check_status, self.status)
+        msg = "desierd (%s), real (%s)" % \
+                (check_status, self.status)
         try:
             if int(self.status) == int(check_status):
-                message.add_ok(self.msg % (
-                        self.probe_id, msg, "HTTP Status Code"))
+                message.add_ok(self.probe_id, self.msg % (
+                    msg, "HTTP Status Code"))
             else:
-                message.add_error(self.msg % (
-                        self.probe_id, msg, "HTTP Status Code"))
+                message.add_error(self.probe_id, self.msg % (
+                    msg, "HTTP Status Code"))
         except ValueError:
-            message.add_error(self.msg % (
-                    self.probe_id, msg, "HTTP Status Code"))
+            message.add_error(self.probe_id, self.msg % (
+                    msg, "HTTP Status Code"))
 
     def check(self, args, message):
         """Main HTTP check routine"""
@@ -349,11 +415,11 @@ class AnswerDns:
             measurment_string, check_string, message):
         """Generic function to compare two strings"""
         if check_string == measurment_string:
-            message.add_ok(self.msg % (
-                    self.probe_id, check_type, measurment_string))
+            message.add_ok(self.probe_id, self.msg % (
+                    check_type, measurment_string))
         else:
-            message.add_error(
-                    self.msg % (self.probe_id, check_type, measurment_string))
+            message.add_error(self.probe_id, self.msg % (
+                check_type, measurment_string))
 
     def check(self, args, message):
         """Main Check routine"""
@@ -377,8 +443,8 @@ class AnswerDnsSOA(AnswerDns):
         if self.rrtype == "RRSIG":
             return
         elif self.rrtype != "SOA":
-            message.add_error(self.msg % (
-                    self.probe_id, "RRTYPE", self.rrtype))
+            message.add_error(self.probe_id, self.msg % (
+                    "RRTYPE", self.rrtype))
             return
         else:
             if args.mname:
@@ -423,8 +489,8 @@ class AnswerDnsA(AnswerDns):
         if self.rrtype == "RRSIG":
             return
         elif self.rrtype != "A" and self.rrtype != "CNAME":
-            message.add_error(self.msg % (
-                    self.probe_id, "RRTYPE", self.rrtype))
+            message.add_error(self.probe_id, self.msg % (
+                    "RRTYPE", self.rrtype))
             return
         else:
             if args.cname_record and self.rrtype == "CNAME":
@@ -454,8 +520,8 @@ class AnswerDnsAAAA(AnswerDns):
         if self.rrtype == "RRSIG":
             return
         elif self.rrtype != "AAAA" and self.rrtype != "CNAME":
-            message.add_error(self.msg % (
-                    self.probe_id, "RRTYPE", self.rrtype))
+            message.add_error(self.probe_id, self.msg % (
+                    "RRTYPE", self.rrtype))
             return
         else:
             if args.cname_record and self.rrtype == "CNAME":
@@ -482,8 +548,8 @@ class AnswerDnsCNAME(AnswerDns):
         if self.rrtype == "RRSIG":
             return
         elif self.rrtype != "CNAME":
-            message.add_error(self.msg % (
-                    self.probe_id, "RRTYPE", self.rrtype))
+            message.add_error(self.probe_id, self.msg % (
+                    "RRTYPE", self.rrtype))
             return
         else:
             if args.cname_record:
@@ -507,8 +573,8 @@ class AnswerDnsDNSKEY(AnswerDns):
         if self.rrtype == "RRSIG":
             return
         elif self.rrtype != "DNSKEY":
-            message.add_error(self.msg % (
-                    self.probe_id, "RRTYPE", self.rrtype))
+            message.add_error(self.probe_id, self.msg % (
+                    "RRTYPE", self.rrtype))
             return
         else:
             if args.cname_record:
@@ -533,8 +599,8 @@ class AnswerDnsDS(AnswerDns):
         if self.rrtype == "RRSIG":
             return
         elif self.rrtype != "DS":
-            message.add_error(self.msg % (
-                    self.probe_id, "RRTYPE", self.rrtype))
+            message.add_error(self.probe_id, self.msg % (
+                    "RRTYPE", self.rrtype))
             return
         else:
             if args.keytag:
@@ -583,21 +649,21 @@ class MeasurmentDns(Measurment):
         """Check the RCODE is the same as rcode"""
         msg = "desierd (%s), real (%s)" % ( rcode, self.rcode)
         if self.rcode == rcode:
-            message.add_ok(self.msg % (
-                    self.probe_id, msg, "DNS RCODE"))
+            message.add_ok(self.probe_id, self.msg % (
+                    msg, "DNS RCODE"))
         else:
-            message.add_error(self.msg % (
-                    self.probe_id, msg, "DNS RCODE"))
+            message.add_error(self.probe_id, self.msg % (
+                    msg, "DNS RCODE"))
 
     def check_flags(self, flags, message):
         """Check the flags returned in the check are the same as flags"""
         for flag in flags.split(","):
             if flag in self.flags.split(): 
-                message.add_ok(self.msg % (
-                        self.probe_id, "Flag found", flag))
+                message.add_ok(self.probe_id, self.msg % (
+                        "Flag found", flag))
             else:
-                message.add_error(self.msg % (
-                        self.probe_id, "Flag Missing ", flag))
+                message.add_error(self.probe_id, self.msg % (
+                        "Flag Missing ", flag))
 
     def check(self, args, message):
         """Main Check routine"""
@@ -641,11 +707,11 @@ class MeasurmentDnsA(MeasurmentDns):
             if args.cname_record and ans.rrtype == "CNAME":
                 cname_record = True
         if args.a_record and not a_record:
-            message.add_error(self.msg % (
-                self.probe_id, "No A Records Found", ""))
+            message.add_error(self.probe_id, self.msg % (
+                "No A Records Found", ""))
         if args.cname_record and not cname_record:
-            message.add_error(self.msg % (
-                self.probe_id, "No CNAME Records Found", ""))
+            message.add_error(self.probe_id, self.msg % (
+                "No CNAME Records Found", ""))
 
 
 class MeasurmentDnsAAAA(MeasurmentDns):
@@ -681,11 +747,11 @@ class MeasurmentDnsAAAA(MeasurmentDns):
             if args.cname_record and ans.rrtype == "CNAME":
                 cname_record = True
         if args.aaaa_record and not aaaa_record:
-            message.add_error(self.msg % (
-                self.probe_id, "No AAAA Records Found", ""))
+            message.add_error(self.probe_id, self.msg % (
+                "No AAAA Records Found", ""))
         if args.cname_record and not cname_record:
-            message.add_error(self.msg % (
-                self.probe_id, "No CNAME Records Found", ""))
+            message.add_error(self.probe_id, self.msg % (
+                "No CNAME Records Found", ""))
 
 
 class MeasurmentDnsCNAME(MeasurmentDns):
@@ -714,8 +780,8 @@ class MeasurmentDnsCNAME(MeasurmentDns):
             if args.cname_record and ans.rrtype == "CNAME":
                 cname_record = True
         if args.cname_record and not cname_record:
-            message.add_error(self.msg % (
-                self.probe_id, "No CNAME Records Found", ""))
+            message.add_error(self.probe_id, self.msg % (
+                "No CNAME Records Found", ""))
 
 
 class MeasurmentDnsDS(MeasurmentDns):
@@ -840,7 +906,7 @@ def arg_parse():
 def main():
     """main function"""
     args = arg_parse()
-    message = Message(args.verbose)
+    message = ProbeMessage(args.verbose)
     measurements =  get_measurements(args.measurement_id)
     parsed_measurements = parse_measurements(
             measurements, args.name, message)
