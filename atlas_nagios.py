@@ -630,7 +630,7 @@ class MeasurmentDns(Measurment):
         """add default dns args"""
         Measurment.add_args(parser)
         parser.add_argument('--flags',
-                help='Comma seperated list o flags to expect')
+                help='Comma seperated list of flags to expect')
         parser.add_argument('--rcode',
                 help='rcode to expect')
 
