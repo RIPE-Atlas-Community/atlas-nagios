@@ -55,7 +55,7 @@ def parse_measurements(measurements, measurement_type, message):
                 'http': MeasurmentHTTP,
                 'ping': MeasurmentPing,
                 'ssl': MeasurmentSSL,
-            }.get(measurement_type, Measurment)(probe_id, measurement[5])
+            }.get(measurement_type.lower(), Measurment)(probe_id, measurement[5])
         )
         #parsed_measurements.append(MeasurmentSSL(probe_id, measurement[5]))
     return parsed_measurements
