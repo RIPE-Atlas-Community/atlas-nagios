@@ -237,9 +237,7 @@ class Measurment:
 
     def check(self, args, message):             
         """main check fucntion"""
-        if args.max_measurement_age != False:
-            self.check_measurement_age(
-                    args.max_measurement_age, message)
+        self.check_measurement_age(args.max_measurement_age, message)
 
 
 class MeasurmentSSL(Measurment):
