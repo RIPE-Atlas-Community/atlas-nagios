@@ -100,35 +100,32 @@ class ProbeMessage:
         except KeyError:
             self.ok[probe] = [message]
 
+    def str_message(self, probe_messages):
+        return ', '.join(['%d=%s' % (key, value) for (key, value) in probe_messages.items()])
+
     def exit(self, args):
         """Parse the message and exit correctly for nagios"""
         if len(self.error) > args.crit_probes:
             if self.verbose > 0:
-                print "ERROR: %d: %s" % (len(self.error),
-                        ", ".join(self.error))
+                print "ERROR: %d: %s" % (len(self.error), self.str_message(self.error))
                 if self.verbose > 1:
-                    print "WARN: %d: %s" % (len(self.warn),
-                            ", ".join(self.warn))
-                    print "OK: %d: %s" % (len(self.ok),
-                        ", ".join(self.ok))
+                    print "WARN: %d: %s" % (len(self.warn), self.str_message(self.warn))
+                    print "OK: %d: %s" % (len(self.ok), self.str_message(self.ok))
 
             else:
                 print "ERROR: %d" % len(self.error)
             sys.exit(2)
         elif len(self.warn) > args.warn_probes:
             if self.verbose > 0:
-                print "WARN: %d: %s" % (len(self.warn),
-                        ", ".join(self.warn))
+                print "WARN: %d: %s" % (len(self.warn), self.str_message(self.warn))
                 if self.verbose > 1:
-                    print "OK: %d: %s" % (len(self.ok),
-                        ", ".join(self.ok))
+                    print "OK: %d: %s" % (len(self.ok), self.str_message(self.ok))
             else:
                 print "WARN: %d" % len(self.warn)
             sys.exit(1)
         else:
             if self.verbose > 1:
-                print "OK: %d: %s" % (len(self.ok),
-                    ", ".join(self.ok))
+                print "OK: %d: %s" % (len(self.ok), self.str_message(self.ok))
             else:
                 print "OK: %d" % len(self.ok)
             sys.exit(0)
@@ -160,35 +157,32 @@ class Message:
         """Add an ok message"""
         self.ok.append(message)
 
+    def str_message(self, probe_messages):
+        return ', '.join(['%d=%s' % (key, value) for (key, value) in probe_messages.items()])
+
     def exit(self):
         """Parse the message and exit correctly for nagios"""
         if len(self.error) > 0:
             if self.verbose > 0:
-                print "ERROR: %d: %s" % (len(self.error),
-                        ", ".join(self.error))
+                print "ERROR: %d: %s" % (len(self.error), self.str_message(self.error))
                 if self.verbose > 1:
-                    print "WARN: %d: %s" % (len(self.warn),
-                            ", ".join(self.warn))
-                    print "OK: %d: %s" % (len(self.ok),
-                        ", ".join(self.ok))
+                    print "WARN: %d: %s" % (len(self.warn), self.str_message(self.warn))
+                    print "OK: %d: %s" % (len(self.ok), self.str_message(self.ok))
 
             else:
                 print "ERROR: %d" % len(self.error)
             sys.exit(2)
         elif len(self.warn) > 0:
             if self.verbose > 0:
-                print "WARN: %d: %s" % (len(self.warn),
-                        ", ".join(self.warn))
+                print "WARN: %d: %s" % (len(self.warn), self.str_message(self.warn))
                 if self.verbose > 1:
-                    print "OK: %d: %s" % (len(self.ok),
-                        ", ".join(self.ok))
+                    print "OK: %d: %s" % (len(self.ok), self.str_message(self.ok))
             else:
                 print "WARN: %d" % len(self.warn)
             sys.exit(1)
         else:
             if self.verbose > 1:
-                print "OK: %d: %s" % (len(self.ok),
-                    ", ".join(self.ok))
+                print "OK: %d: %s" % (len(self.ok), self.str_message(self.ok))
             else:
                 print "OK: %d" % len(self.ok)
             sys.exit(0)
