@@ -316,7 +316,7 @@ class MeasurmentPing(Measurment):
     def check_rtt(self, check_type, rtt, message):
         """Check the return trip time islower then rtt"""
         msg = "desired (%s), real (%s)" % (rtt, self.avg_rtt)
-        if self.avg_rtt < rtt:
+        if self.avg_rtt < float(rtt):
             message.add_ok(self.probe_id, self.msg % (
                      msg, "Ping %s" % check_type))
         else:
