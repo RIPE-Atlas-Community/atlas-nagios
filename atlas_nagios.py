@@ -24,8 +24,7 @@ def get_response (url):
         conn.close()
         return json_data
     except urllib2.HTTPError as error:
-        print '''Unknown: Fatal error when reading request
-                (%s): %s''' % (error.code, error.read())
+        print "Unknown: Fatal error when reading request, (%s): %s" % (error.code, error.read())
         sys.exit(3)
 
 
@@ -209,17 +208,13 @@ class Measurment:
     def add_args(parser):
         """add SSL arguments"""
         parser.add_argument('-v', '--verbose', action='count',
-                help='increase verbosity')
+                help='Increase verbosity')
         parser.add_argument("measurement_id",
                 help="Measuerment ID to check")
         parser.add_argument('-w', '--warn-probes', type=int, default=2,
-                help='WARN if # probes have a warn considtion')
+                help='WARN if # probes have a warn condition')
         parser.add_argument('-c', '--crit-probes', type=int, default=1,
-                help='ERROR if # probes have a warn considtion')
-        parser.add_argument('-W', '--warn-mesuerment', type=int, default=2,
-                help='WARN if # mesuerment have a warn considtion')
-        parser.add_argument('-C', '--crit-mesuerment', type=int, default=1,
-                help='ERROR if # mesuerment have a warn considtion')
+                help='ERROR if # probes have a warn condition')
         parser.add_argument('-k', '--key',
                 help="API key for non-public measurements")
         parser.add_argument('--max_measurement_age', type=int, default=3600,
@@ -328,7 +323,7 @@ class MeasurmentPing(Measurment):
 
     def check_rtt(self, check_type, rtt, message):
         """Check the return trip time islower then rtt"""
-        msg = "desierd (%s), real (%s)" % (rtt, self.avg_rtt)
+        msg = "desired (%s), real (%s)" % (rtt, self.avg_rtt)
         if self.avg_rtt < rtt:
             message.add_ok(self.probe_id, self.msg % (
                      msg, "Ping %s" % check_type))
@@ -374,7 +369,7 @@ class MeasurmentHTTP(Measurment):
 
     def check_status(self, check_status, message):
         """check the HTTP status is the same as check_status"""
-        msg = "desierd (%s), real (%s)" % \
+        msg = "desired (%s), real (%s)" % \
                 (check_status, self.status)
         try:
             if int(self.status) == int(check_status):
@@ -643,14 +638,14 @@ class MeasurmentDns(Measurment):
         """add default dns args"""
         Measurment.add_args(parser)
         parser.add_argument('--flags',
-                help='Coma seperated list o flags to expect')
+                help='Comma seperated list o flags to expect')
         parser.add_argument('--rcode',
                 help='rcode to expect')
 
 
     def check_rcode(self, rcode, message):
         """Check the RCODE is the same as rcode"""
-        msg = "desierd (%s), real (%s)" % ( rcode, self.rcode)
+        msg = "desired (%s), real (%s)" % ( rcode, self.rcode)
         if self.rcode == rcode:
             message.add_ok(self.probe_id, self.msg % (
                     msg, "DNS RCODE"))
