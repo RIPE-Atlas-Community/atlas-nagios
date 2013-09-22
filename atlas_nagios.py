@@ -100,9 +100,9 @@ class ProbeMessage:
         except KeyError:
             self.ok[probe] = [message]
 
-    def exit(self):
+    def exit(self, args):
         """Parse the message and exit correctly for nagios"""
-        if len(self.error) > 0:
+        if len(self.error) > args.crit_probes:
             if self.verbose > 0:
                 print "ERROR: %d: %s" % (len(self.error),
                         ", ".join(self.error))
@@ -115,7 +115,7 @@ class ProbeMessage:
             else:
                 print "ERROR: %d" % len(self.error)
             sys.exit(2)
-        elif len(self.warn) > 0:
+        elif len(self.warn) > args.warn_probes:
             if self.verbose > 0:
                 print "WARN: %d: %s" % (len(self.warn),
                         ", ".join(self.warn))
@@ -909,7 +909,7 @@ def main():
     parsed_measurements = parse_measurements(
             measurements, args.name, message)
     check_measurements(parsed_measurements, args, message)
-    message.exit()
+    message.exit(args)
 
 
 if __name__ == '__main__':
