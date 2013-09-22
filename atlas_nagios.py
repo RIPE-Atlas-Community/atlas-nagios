@@ -29,10 +29,11 @@ def get_response (url):
         sys.exit(3)
 
 
-def get_measurements( measurement_id):
+def get_measurements(measurement_id, key=None):
     '''Fetch a measuerment with it=measurement_id'''
-    url = "https://atlas.ripe.net/api/v1/measurement/%s/latest/" \
-            % measurement_id
+    url = "https://atlas.ripe.net/api/v1/measurement/%s/latest/" % measurement_id
+    if (key):
+        url = url + "?key=%s" % key
     return get_response(url)
 
 
@@ -219,6 +220,8 @@ class Measurment:
                 help='WARN if # mesuerment have a warn considtion')
         parser.add_argument('-C', '--crit-mesuerment', type=int, default=1,
                 help='ERROR if # mesuerment have a warn considtion')
+        parser.add_argument('-k', '--key',
+                help="API key for non-public measurements")
         parser.add_argument('--max_measurement_age', type=int, default=3600,
                 help='The max age of a measuerment in unix time')
 
@@ -907,7 +910,7 @@ def main():
     """main function"""
     args = arg_parse()
     message = ProbeMessage(args.verbose)
-    measurements =  get_measurements(args.measurement_id)
+    measurements =  get_measurements(args.measurement_id, args.key)
     parsed_measurements = parse_measurements(
             measurements, args.name, message)
     check_measurements(parsed_measurements, args, message)
