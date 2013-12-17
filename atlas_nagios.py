@@ -31,6 +31,11 @@ def get_response (url):
 
 def get_measurements( measurement_id):
     '''Fetch a measuerment with it=measurement_id'''
+    '''api changed probably this one :
+    https://atlas.ripe.net/api/internal/measurement-latst/%s/
+    however this one has less junk 
+    https://atlas.ripe.net/api/internal/measurement-latest/%s/
+    '''
     url = "https://atlas.ripe.net/api/v1/measurement/%s/latest/" \
             % measurement_id
     return get_response(url)
