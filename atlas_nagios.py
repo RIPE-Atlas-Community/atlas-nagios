@@ -24,20 +24,20 @@ def get_response (url):
         conn.close()
         return json_data
     except urllib2.HTTPError as error:
-        print '''Unknown: Fatal error when reading request
-                (%s): %s''' % (error.code, error.read())
+        print "Unknown: Fatal error when reading request, (%s): %s" % (error.code, error.read())
         sys.exit(3)
 
 
-def get_measurements( measurement_id):
+def get_measurements(measurement_id, key=None):
     '''Fetch a measuerment with it=measurement_id'''
     '''api changed probably this one :
     https://atlas.ripe.net/api/internal/measurement-latst/%s/
     however this one has less junk 
     https://atlas.ripe.net/api/internal/measurement-latest/%s/
     '''
-    url = "https://atlas.ripe.net/api/v1/measurement/%s/latest/" \
-            % measurement_id
+    url = "https://atlas.ripe.net/api/v1/measurement/%s/latest/" % measurement_id
+    if (key):
+        url = url + "?key=%s" % key
     return get_response(url)
 
 
@@ -60,7 +60,7 @@ def parse_measurements(measurements, measurement_type, message):
                 'http': MeasurmentHTTP,
                 'ping': MeasurmentPing,
                 'ssl': MeasurmentSSL,
-            }.get(measurement_type, Measurment)(probe_id, measurement[5])
+            }.get(measurement_type.lower(), Measurment)(probe_id, measurement[5])
         )
         #parsed_measurements.append(MeasurmentSSL(probe_id, measurement[5]))
     return parsed_measurements
@@ -105,35 +105,32 @@ class ProbeMessage:
         except KeyError:
             self.ok[probe] = [message]
 
-    def exit(self):
+    def str_message(self, probe_messages):
+        return ', '.join(['%d=%s' % (key, value) for (key, value) in probe_messages.items()])
+
+    def exit(self, args):
         """Parse the message and exit correctly for nagios"""
-        if len(self.error) > 0:
+        if len(self.error) > args.crit_probes:
             if self.verbose > 0:
-                print "ERROR: %d: %s" % (len(self.error),
-                        ", ".join(self.error))
+                print "ERROR: %d: %s" % (len(self.error), self.str_message(self.error))
                 if self.verbose > 1:
-                    print "WARN: %d: %s" % (len(self.warn),
-                            ", ".join(self.warn))
-                    print "OK: %d: %s" % (len(self.ok),
-                        ", ".join(self.ok))
+                    print "WARN: %d: %s" % (len(self.warn), self.str_message(self.warn))
+                    print "OK: %d: %s" % (len(self.ok), self.str_message(self.ok))
 
             else:
                 print "ERROR: %d" % len(self.error)
             sys.exit(2)
-        elif len(self.warn) > 0:
+        elif len(self.warn) > args.warn_probes:
             if self.verbose > 0:
-                print "WARN: %d: %s" % (len(self.warn),
-                        ", ".join(self.warn))
+                print "WARN: %d: %s" % (len(self.warn), self.str_message(self.warn))
                 if self.verbose > 1:
-                    print "OK: %d: %s" % (len(self.ok),
-                        ", ".join(self.ok))
+                    print "OK: %d: %s" % (len(self.ok), self.str_message(self.ok))
             else:
                 print "WARN: %d" % len(self.warn)
             sys.exit(1)
         else:
             if self.verbose > 1:
-                print "OK: %d: %s" % (len(self.ok),
-                    ", ".join(self.ok))
+                print "OK: %d: %s" % (len(self.ok), self.str_message(self.ok))
             else:
                 print "OK: %d" % len(self.ok)
             sys.exit(0)
@@ -165,35 +162,32 @@ class Message:
         """Add an ok message"""
         self.ok.append(message)
 
+    def str_message(self, probe_messages):
+        return ', '.join(['%d=%s' % (key, value) for (key, value) in probe_messages.items()])
+
     def exit(self):
         """Parse the message and exit correctly for nagios"""
         if len(self.error) > 0:
             if self.verbose > 0:
-                print "ERROR: %d: %s" % (len(self.error),
-                        ", ".join(self.error))
+                print "ERROR: %d: %s" % (len(self.error), self.str_message(self.error))
                 if self.verbose > 1:
-                    print "WARN: %d: %s" % (len(self.warn),
-                            ", ".join(self.warn))
-                    print "OK: %d: %s" % (len(self.ok),
-                        ", ".join(self.ok))
+                    print "WARN: %d: %s" % (len(self.warn), self.str_message(self.warn))
+                    print "OK: %d: %s" % (len(self.ok), self.str_message(self.ok))
 
             else:
                 print "ERROR: %d" % len(self.error)
             sys.exit(2)
         elif len(self.warn) > 0:
             if self.verbose > 0:
-                print "WARN: %d: %s" % (len(self.warn),
-                        ", ".join(self.warn))
+                print "WARN: %d: %s" % (len(self.warn), self.str_message(self.warn))
                 if self.verbose > 1:
-                    print "OK: %d: %s" % (len(self.ok),
-                        ", ".join(self.ok))
+                    print "OK: %d: %s" % (len(self.ok), self.str_message(self.ok))
             else:
                 print "WARN: %d" % len(self.warn)
             sys.exit(1)
         else:
             if self.verbose > 1:
-                print "OK: %d: %s" % (len(self.ok),
-                    ", ".join(self.ok))
+                print "OK: %d: %s" % (len(self.ok), self.str_message(self.ok))
             else:
                 print "OK: %d" % len(self.ok)
             sys.exit(0)
@@ -213,17 +207,15 @@ class Measurment:
     def add_args(parser):
         """add SSL arguments"""
         parser.add_argument('-v', '--verbose', action='count',
-                help='increase verbosity')
+                help='Increase verbosity')
         parser.add_argument("measurement_id",
                 help="Measuerment ID to check")
         parser.add_argument('-w', '--warn-probes', type=int, default=2,
-                help='WARN if # probes have a warn considtion')
+                help='WARN if # probes have a warn condition')
         parser.add_argument('-c', '--crit-probes', type=int, default=1,
-                help='ERROR if # probes have a warn considtion')
-        parser.add_argument('-W', '--warn-mesuerment', type=int, default=2,
-                help='WARN if # mesuerment have a warn considtion')
-        parser.add_argument('-C', '--crit-mesuerment', type=int, default=1,
-                help='ERROR if # mesuerment have a warn considtion')
+                help='ERROR if # probes have a warn condition')
+        parser.add_argument('-k', '--key',
+                help="API key for non-public measurements")
         parser.add_argument('--max_measurement_age', type=int, default=3600,
                 help='The max age of a measuerment in unix time')
 
@@ -250,9 +242,7 @@ class Measurment:
 
     def check(self, args, message):             
         """main check fucntion"""
-        if args.max_measurement_age != False:
-            self.check_measurement_age(
-                    args.max_measurement_age, message)
+        self.check_measurement_age(args.max_measurement_age, message)
 
 
 class MeasurmentSSL(Measurment):
@@ -330,8 +320,8 @@ class MeasurmentPing(Measurment):
 
     def check_rtt(self, check_type, rtt, message):
         """Check the return trip time islower then rtt"""
-        msg = "desierd (%s), real (%s)" % (rtt, self.avg_rtt)
-        if self.avg_rtt < rtt:
+        msg = "desired (%s), real (%s)" % (rtt, self.avg_rtt)
+        if self.avg_rtt < float(rtt):
             message.add_ok(self.probe_id, self.msg % (
                      msg, "Ping %s" % check_type))
         else:
@@ -376,7 +366,7 @@ class MeasurmentHTTP(Measurment):
 
     def check_status(self, check_status, message):
         """check the HTTP status is the same as check_status"""
-        msg = "desierd (%s), real (%s)" % \
+        msg = "desired (%s), real (%s)" % \
                 (check_status, self.status)
         try:
             if int(self.status) == int(check_status):
@@ -645,14 +635,14 @@ class MeasurmentDns(Measurment):
         """add default dns args"""
         Measurment.add_args(parser)
         parser.add_argument('--flags',
-                help='Coma seperated list o flags to expect')
+                help='Comma seperated list of flags to expect')
         parser.add_argument('--rcode',
                 help='rcode to expect')
 
 
     def check_rcode(self, rcode, message):
         """Check the RCODE is the same as rcode"""
-        msg = "desierd (%s), real (%s)" % ( rcode, self.rcode)
+        msg = "desired (%s), real (%s)" % ( rcode, self.rcode)
         if self.rcode == rcode:
             message.add_ok(self.probe_id, self.msg % (
                     msg, "DNS RCODE"))
@@ -912,11 +902,11 @@ def main():
     """main function"""
     args = arg_parse()
     message = ProbeMessage(args.verbose)
-    measurements =  get_measurements(args.measurement_id)
+    measurements =  get_measurements(args.measurement_id, args.key)
     parsed_measurements = parse_measurements(
             measurements, args.name, message)
     check_measurements(parsed_measurements, args, message)
-    message.exit()
+    message.exit(args)
 
 
 if __name__ == '__main__':
