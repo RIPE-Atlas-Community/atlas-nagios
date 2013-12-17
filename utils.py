@@ -4,7 +4,6 @@ import argparse
 import requests
 import json
 import pprint
-import urllib2
 
 from measurements import *
 
@@ -15,17 +14,23 @@ def ensure_list(list_please):
     else:
         return list_please
 
-def get_response (url):
+def get_response(url):
     '''Fetch a Json Object from url'''
-    #print url
-    request = JsonRequest(url)
+    headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+            }
     try:
-        conn = urllib2.urlopen(request)
-        json_data = json.load(conn)
-        conn.close()
-        return json_data
-    except urllib2.HTTPError as error:
-        print "Unknown: Fatal error when reading request, (%s): %s" % (error.code, error.read())
+        request = requests.get(url,headers=headers)
+        request.raise_for_status()
+    except requests.exceptions.RequestException as error:
+        print '''Unknown: Fatal error when reading request: %s''' % error
+        sys.exit(3)
+
+    if request.status_code in [200, 201, 202]:
+        return request.json()
+    else:
+        print '''Unexpected non-fatal status code: %s''' % request.status_code
         sys.exit(3)
 
 
