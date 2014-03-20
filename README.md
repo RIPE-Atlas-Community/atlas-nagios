@@ -26,20 +26,17 @@ There are a number of parameters that are standard for all check types
 
 ###Arguments
 ####Number of Warning probes
-> -w #of probes
-> --warn-probes #of probes
+> -w/--warn-probes #of probes
 
 This parameter takes an inteiger and intructes the script to exit with a warning state if # or more probes exit in a warning state.  Warning states are dependent on the check type
  
 ####Number of criticle probes
-> -c #of probes
-> --crit-probes #of probes
+> -c/--crit-probes #of probes
 
 This parameter takes an inteiger and intructes the script to exit with a critical state if # or more probes exit in a critical state.  Warning states are dependent on the check type
  
 ####Key
-> -k APIKEY
-> --key APIKEY
+> -k/--key APIKEY
 
 This is used to pass an API key for measurments that are marked as private.
 
