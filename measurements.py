@@ -133,11 +133,11 @@ class MeasurmentPing(Measurment):
         """add SSL arguments"""
         parser = subparser.add_parser('ping', help='SSL check')
         Measurment.add_args(parser)
-        parser.add_argument('--rtt_max',
+        parser.add_argument('--rtt-max', type=float,
                 help='Ensure the max ttl is below this')
-        parser.add_argument('--rtt_min',
+        parser.add_argument('--rtt-min', type=float,
                 help='Ensure the min ttl is below this')
-        parser.add_argument('--rtt_avg',
+        parser.add_argument('--rtt-avg', type=float,
                 help='Ensure the avg ttl is below this')
 
     def check_rtt(self, check_type, rtt, message):

@@ -24,7 +24,6 @@ Standard checks
 
 There are a number of parameters that are standard for all check types
 
-###Arguments
 ####Number of Warning probes
 > -w/--warn-probes #of probes
 
@@ -52,9 +51,8 @@ This works like a standard -v flag the more you pass the more info you get back.
 
 SSL Check
 ---------
-This runs checks agains the SSL check
+This runs checks against an SSL measurement
 
-###Arguments
 ####Common name
 > --common-name CN
 
@@ -70,6 +68,24 @@ If the expiry seen by the probe is less then the current time + this mount of da
 
 If the sha1 hash seen by the probe is different to the one past the probe will go into a critical state.
 
+Ping Check
+----------
 
+This runs checks against an ping measurement
+
+Ping checks are now avalible via the atlas status checks so you might want to consider using this
+https://labs.ripe.net/Members/suzanne_taylor_muzzin/introducing-ripe-atlas-status-checks
+
+####Average RTT
+> --rtt-avg #ms float
+if the average rrt value is lower then this then the probe goes into critical state
+
+####Maximum RTT
+> --rtt-max #ms float
+Not implmented, currently dose the same as the average RTT
+
+####Minimum RTT
+> --rtt-min #ms float
+Not implmented, currently dose the same as the average RTT
 
 [1]https://atlas.ripe.net/
