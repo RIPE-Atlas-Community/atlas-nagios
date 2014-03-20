@@ -183,7 +183,7 @@ class MeasurmentHTTP(Measurment):
         """add SSL arguments"""
         parser = subparser.add_parser('http', help='SSL check')
         Measurment.add_args(parser)
-        parser.add_argument('--status_code', type=int, default=200,
+        parser.add_argument('--status-code', type=int, default=200,
                 help='Ensure the site returns this status code')
 
     def check_status(self, check_status, message):

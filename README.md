@@ -5,6 +5,8 @@ Library for preforming various nagios checks using the RIPE Atlas[1] network.
 
 To use this library you will need to have a current ongoing atlas measurement and know the measurement id.  You should note that this is a work in progress so there are likley errors and almost definetly typos and spelling mistakes.
 
+[1]https://atlas.ripe.net/
+
 Basic Usage
 -----------
 for supported measuerment types run the following command
@@ -78,14 +80,27 @@ https://labs.ripe.net/Members/suzanne_taylor_muzzin/introducing-ripe-atlas-statu
 
 ####Average RTT
 > --rtt-avg #ms float
+
 if the average rrt value is lower then this then the probe goes into critical state
 
 ####Maximum RTT
 > --rtt-max #ms float
+
 Not implmented, currently dose the same as the average RTT
 
 ####Minimum RTT
 > --rtt-min #ms float
+
 Not implmented, currently dose the same as the average RTT
 
-[1]https://atlas.ripe.net/
+HTTP Check
+----------
+
+This runs checks against an http measurement
+
+Warning this is a restricted check type.  only avalible upon request
+
+####Status Code
+> --status-code HTTP status code
+
+If the return code seen by the probe is different to the value passed the probe gose into an critcal state
