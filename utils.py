@@ -7,13 +7,6 @@ import pprint
 
 from measurements import *
 
-def ensure_list(list_please):
-    """make @list_please a list if it isn't one already"""
-    if type(list_please) != list:
-        return [(list_please)]
-    else:
-        return list_please
-
 def get_response(url):
     '''Fetch a Json Object from url'''
     headers = {
@@ -41,7 +34,7 @@ def get_measurements(measurement_id, key=None):
     however this one has less junk
     https://atlas.ripe.net/api/internal/measurement-latest/%s/
     '''
-    url = "https://atlas.ripe.net/api/v1/measurement/%s/latest/" % measurement_id
+    url = "https://atlas.ripe.net/api/internal/measurement-latest/%s/" % measurement_id
     if (key):
         url = url + "?key=%s" % key
     return get_response(url)
@@ -50,9 +43,8 @@ def get_measurements(measurement_id, key=None):
 def parse_measurements(measurements, measurement_type, message):
     '''Parse the measuerment'''
     parsed_measurements = []
-    for measurement in measurements:
-        probe_id = measurement[1]
-        if measurement[5] == None:
+    for probe_id, measurement in measurements.iteritems():
+        if measurement == None:
             message.add_error(probe_id, "No data")
             continue
         parsed_measurements.append(
@@ -66,7 +58,7 @@ def parse_measurements(measurements, measurement_type, message):
                 'http': MeasurmentHTTP,
                 'ping': MeasurmentPing,
                 'ssl': MeasurmentSSL,
-            }.get(measurement_type.lower(), Measurment)(probe_id, measurement[5])
+            }.get(measurement_type.lower(), Measurment)(probe_id, measurement)
         )
         #parsed_measurements.append(MeasurmentSSL(probe_id, measurement[5]))
     return parsed_measurements

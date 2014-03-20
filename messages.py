@@ -31,7 +31,7 @@ class Message:
         self.ok.append(message)
 
     def str_message(self, probe_messages):
-        return ', '.join(['%d=%s' % (key, value) for (key, value) in probe_messages.items()])
+        return ', '.join(['%s=%s' % (key, value) for (key, value) in probe_messages.items()])
 
     def exit(self):
         """Parse the message and exit correctly for nagios"""
@@ -95,7 +95,7 @@ class ProbeMessage:
             self.ok[probe] = [message]
 
     def str_message(self, probe_messages):
-        return ', '.join(['%d=%s' % (key, value) for (key, value) in probe_messages.items()])
+        return ', '.join(['%s=%s' % (key, value) for (key, value) in probe_messages.items()])
 
     def exit(self, args):
         """Parse the message and exit correctly for nagios"""

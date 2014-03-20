@@ -12,7 +12,7 @@ class AnswerDns:
         """Initiate object"""
         self.answer = answer
         self.probe_id = probe_id
-        self.msg = "Probe (%s): %s (%s)"
+        self.msg = "%s (%s)"
         try:
             if "RRSIG" == self.answer.split()[3]:
                 self.rrtype = "RRSIG"
@@ -178,7 +178,8 @@ class AnswerDnsDNSKEY(AnswerDns):
         try:
             if "DNSKEY" == self.answer.split()[3]:
                 self.qname, self.ttl, _, self.rrtype, \
-                        self.rdata = answer.split()
+                        self.flags, self.protocol, self.algorithm, \
+                        self.key = answer.split(' ',7)
         except IndexError:
             print self.answer
 
@@ -191,9 +192,8 @@ class AnswerDnsDNSKEY(AnswerDns):
                     "RRTYPE", self.rrtype))
             return
         else:
-            if args.cname_record:
-                self.check_string("cname",
-                        self.rdata, args.cname_record, message)
+            #not implmented
+            return
 
 
 class AnswerDnsDS(AnswerDns):

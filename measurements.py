@@ -4,6 +4,7 @@ import argparse
 import requests
 import json
 import pprint
+from dns_answers import AnswerDnsA, AnswerDnsAAAA, AnswerDnsCNAME, AnswerDnsDS, AnswerDnsDNSKEY, AnswerDnsSOA
 
 class Measurment:
     """Parent object for an atlas measurment"""
@@ -12,7 +13,8 @@ class Measurment:
         """Initiate generic message data"""
         self.probe_id = probe_id
         self.payload = payload
-        self.check_time = self.payload[1]
+        self.check_time = self.payload['timestamp']
+        self.result = self.payload['result']
         self.msg = "%s (%s)"
 
     @staticmethod
@@ -30,6 +32,13 @@ class Measurment:
                 help="API key for non-public measurements")
         parser.add_argument('--max_measurement_age', type=int, default=3600,
                 help='The max age of a measuerment in unix time')
+
+    def ensure_list(self, list_please):
+        """make @list_please a list if it isn't one already"""
+        if type(list_please) != list:
+            return [(list_please)]
+        else:
+            return list_please
 
     def check_measurement_age(self, max_age, message):
         """Check if a measerment is fresh enough"""
@@ -64,10 +73,10 @@ class MeasurmentSSL(Measurment):
         """Initiate object"""
         #super(Measurment, self).__init__(payload)
         Measurment.__init__(self, probe_id, payload)
-        self.common_name = self.payload[2][0][0]
+        self.common_name = self.result[0][0]
         self.expiry = time.mktime(
-                time.strptime(self.payload[2][0][4],"%Y%m%d%H%M%SZ"))
-        self.sha1 = self.payload[2][0][5]
+                time.strptime(self.result[0][4],"%Y%m%d%H%M%SZ"))
+        self.sha1 = self.result[0][5]
 
     @staticmethod
     def add_args(subparser):
@@ -116,7 +125,7 @@ class MeasurmentPing(Measurment):
         """Initiate object"""
         #super(Measurment, self).__init__(self, payload)
         Measurment.__init__(self, probe_id, payload)
-        self.avg_rtt = self.payload[0]
+        self.avg_rtt = self.payload['average']
 
     @staticmethod
     def add_args(subparser):
@@ -160,10 +169,10 @@ class MeasurmentHTTP(Measurment):
         #super(Measurment, self).__init__(self, payload)
         Measurment.__init__(self, probe_id, payload)
         try:
-            self.status = self.payload[2][0]['res']
+            self.status = self.result[0]['res']
         except KeyError:
             try:
-                self.status = self.payload[2][0]['dnserr']
+                self.status = self.result[0]['dnserr']
             except KeyError:
                 #probably a time out, should use a better status code
                 self.status = 500
@@ -204,16 +213,15 @@ class MeasurmentDns(Measurment):
         """Initiate Object"""
         #super(Measurment, self).__init__(self, payload)
         Measurment.__init__(self, probe_id, payload)
-        self.additional = self.payload[2]['additional']
-        self.question = { 'qname': "", 'qtype': "", 'question':"" }
+        self.additional = self.result['additional']
+        self.question = { 'qname': '', 'qtype': '' }
         self.question['qname'], _, self.question['qtype'] = \
-                self.payload[2]['question'].split()
-        self.authority = self.payload[2]['authority']
-        self.rcode = self.payload[2]['rcode']
-        self.flags = self.payload[2]['flags']
+                self.result['question'].split()
+        self.authority = self.result['authority']
+        self.rcode = self.result['rcode']
+        self.flags = self.result['flags']
         self.answer = []
-        if self.rcode == "NOERROR":
-            self.answer_raw = ensure_list(self.payload[2]['answer'])
+        self.answer_raw = self.ensure_list(self.result['answer'])
 
     @staticmethod
     def add_args(parser):
@@ -263,7 +271,8 @@ class MeasurmentDnsA(MeasurmentDns):
         #super(Measurment, self).__init__(self, payload)
         MeasurmentDns.__init__(self, probe_id, payload)
         for ans in self.answer_raw:
-            self.answer.append(AnswerDnsA(self.probe_id, ans))
+            if ans:
+                self.answer.append(AnswerDnsA(self.probe_id, ans))
 
     @staticmethod
     def add_args(subparser):
@@ -302,7 +311,8 @@ class MeasurmentDnsAAAA(MeasurmentDns):
         #super(Measurment, self).__init__(self, payload)
         MeasurmentDns.__init__(self, probe_id, payload)
         for ans in self.answer_raw:
-            self.answer.append(AnswerDnsAAAA(self.probe_id, ans))
+            if ans:
+                self.answer.append(AnswerDnsAAAA(self.probe_id, ans))
 
     @staticmethod
     def add_args(subparser):
@@ -342,7 +352,8 @@ class MeasurmentDnsCNAME(MeasurmentDns):
         #super(Measurment, self).__init__(self, payload)
         MeasurmentDns.__init__(self, probe_id, payload)
         for ans in self.answer_raw:
-            self.answer.append(AnswerDnsCNAME(self.probe_id, ans))
+            if ans:
+                self.answer.append(AnswerDnsCNAME(self.probe_id, ans))
 
     @staticmethod
     def add_args(subparser):
@@ -372,7 +383,8 @@ class MeasurmentDnsDS(MeasurmentDns):
         #super(Measurment, self).__init__(self, payload)
         MeasurmentDns.__init__(self, probe_id, payload)
         for ans in self.answer_raw:
-            self.answer.append(AnswerDnsDS(self.probe_id, ans))
+            if ans:
+                self.answer.append(AnswerDnsDS(self.probe_id, ans))
 
     @staticmethod
     def add_args(subparser):
@@ -404,7 +416,8 @@ class MeasurmentDnsDNSKEY(MeasurmentDns):
         """Initiate Object"""
         MeasurmentDns.__init__(self, probe_id, payload)
         for ans in self.answer_raw:
-            self.answer.append(AnswerDnsDNSKEY(self.probe_id, ans))
+            if ans:
+                self.answer.append(AnswerDnsDNSKEY(self.probe_id, ans))
 
     @staticmethod
     def add_args(subparser):
@@ -424,7 +437,8 @@ class MeasurmentDnsSOA(MeasurmentDns):
         #super(Measurment, self).__init__(self, payload)
         MeasurmentDns.__init__(self, probe_id, payload)
         for ans in self.answer_raw:
-            self.answer.append(AnswerDnsSOA(self.probe_id, ans))
+            if ans:
+                self.answer.append(AnswerDnsSOA(self.probe_id, ans))
 
     @staticmethod
     def add_args(subparser):
