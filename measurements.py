@@ -31,7 +31,7 @@ class Measurment:
         parser.add_argument('-k', '--key',
                 help="API key for non-public measurements")
         parser.add_argument('--max_measurement_age', type=int, default=3600,
-                help='The max age of a measuerment in unix time')
+                help='The max age of a measuerment in seconds')
 
     def ensure_list(self, list_please):
         """make @list_please a list if it isn't one already"""
@@ -74,7 +74,7 @@ class MeasurmentSSL(Measurment):
         #super(Measurment, self).__init__(payload)
         Measurment.__init__(self, probe_id, payload)
         self.common_name = self.result[0][0]
-        self.expiry = time.mktime(
+        self.expire = time.mktime(
                 time.strptime(self.result[0][4],"%Y%m%d%H%M%SZ"))
         self.sha1 = self.result[0][5]
 
@@ -83,9 +83,9 @@ class MeasurmentSSL(Measurment):
         """add SSL arguments"""
         parser = subparser.add_parser('ssl', help='SSL check')
         Measurment.add_args(parser)
-        parser.add_argument('--common_name',
+        parser.add_argument('--common-name',
                 help='Ensure a cert has this cn')
-        parser.add_argument('--sslexpiry', type=int, default=30,
+        parser.add_argument('--ssl-expire-days', type=int, default=30,
                 help="Ensure certificate dosne't expire in x days")
         parser.add_argument('--sha1hash',
                 help="Ensure certificate has this sha1 hash")
@@ -93,17 +93,18 @@ class MeasurmentSSL(Measurment):
     def check_expiry(self, warn_expiry, message):
         """Check if the certificat is going to expire before warn_expiry"""
         current_time = time.time()
-        warn_time = current_time - (warn_expiry * 60 * 60 * 24)
-        expiry_str = time.ctime(self.expiry)
-        if self.expiry < current_time:
+        warn_time = current_time + (warn_expiry * 60 * 60 * 24)
+        expire_str = time.ctime(self.expire)
+        if self.expire < current_time:
             message.add_error(self.probe_id, self.msg % (
-                    "certificate expierd", expiry_str))
-        elif self.expiry < warn_time:
+                    "certificate expierd", expire_str))
+            return
+        elif self.expire < warn_time:
             message.add_warn(self.probe_id, self.msg % (
-                    "certificate expires soon", expiry_str))
+                    "certificate expires soon", expire_str))
         else:
             message.add_ok(self.probe_id, self.msg % (
-                    "certificate expiry good", expiry_str))
+                    "certificate expiry good", expire_str))
 
     def check(self, args, message):
         """Main SSL check routine"""
@@ -114,8 +115,8 @@ class MeasurmentSSL(Measurment):
         if args.common_name:
             self.check_string( args.common_name,
                     self.common_name, 'cn', message)
-        if args.sslexpiry:
-            self.check_expiry(args.sslexpiry, message)
+        if args.ssl_expire_days:
+            self.check_expiry(args.ssl_expire_days, message)
 
 
 class MeasurmentPing(Measurment):
