@@ -230,7 +230,7 @@ class MeasurmentDns(Measurment):
         Measurment.add_args(parser)
         parser.add_argument('--flags',
                 help='Comma seperated list of flags to expect')
-        parser.add_argument('--rcode',
+        parser.add_argument('--rcode', default='NOERROR',
                 help='rcode to expect')
 
 

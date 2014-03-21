@@ -98,6 +98,41 @@ checks all Answers seen by a probe to ensure that at least one contains the cnam
 ###SOA Record
 This runs checks against an DNS SOA record measurement
 
+####MNAME 
+> --mname ns.example.com
+
+I the probe sees a different mname then the one passed it is placed into the critical state
+
+####RNAME 
+> --mname postmaster.example.com
+
+I the probe sees a different nname then the one passed it is placed into the critical state
+
+####Serial 
+> --serial (int)serial number
+
+I the probe sees a different serial then the one passed it is placed into the critical state
+
+####REFRESH 
+> --refresh (int)refresh number
+
+I the probe sees a different refresh then the one passed it is placed into the critical state
+
+####UPDATE 
+> --update (int)update number
+
+I the probe sees a different update then the one passed it is placed into the critical state
+
+####EXPIRE 
+> --expire (int)expire number
+
+I the probe sees a different expire then the one passed it is placed into the critical state
+
+####NXDOMAIN 
+> --nxdomian (int)nxdomian number
+
+I the probe sees a different nxdomian then the one passed it is placed into the critical state
+
 ###CNAME Record
 This runs checks against an DNS CNAME record measurement
 
