@@ -117,17 +117,17 @@ There is a bug in this check, currently dosn't support having multible DS record
 
 if the there are any keytags that do not match this value the check is placed into a criticle stage.
 
-###Algorithm
+####Algorithm
 > --algorithm (int)algorithem
 
 if there are any DS records that opserved by a probe that dont contain this algorithem the probe is placed into a criticle state
 
-###Digest type
+####Digest type
 > --digest-type
 
 if there are any DS records opserved by a probe that dont contain this digest type the probe is placed into a criticle state
 
-###Digest 
+####Digest 
 > --digest
 
 if there are any DS records opserved by a probe that dont contain this digest the probe is placed into a criticle state
