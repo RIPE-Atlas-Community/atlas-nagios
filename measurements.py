@@ -397,7 +397,7 @@ class MeasurmentDnsDS(MeasurmentDns):
         parser.add_argument('--algorithm',
                 help='Ensure the RR set from the answer \
                         contains a algorithm record with this string')
-        parser.add_argument('--digest_type',
+        parser.add_argument('--digest-type',
                 help='Ensure the RR set from the answer \
                         contains a digest type record with this string')
         parser.add_argument('--digest',

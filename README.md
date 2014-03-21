@@ -51,6 +51,91 @@ This argument takes an int representinf seconds.  If a probes measurment data is
 
 This works like a standard -v flag the more you pass the more info you get back.  
 
+DNS Check
+---------
+There are multible subtypes for the dns check
+
+###Generic arguments
+The following argumens are valid for all DNS Checks
+
+####Return Code
+> --rcode 'return code string'
+
+This argument expects a sting of the form NOERROR, NXDOMAIN NODATA etc.  if a probe sees an rcode which differes to the argument then the probe is put into a critical state
+
+####Flags
+> --flags comma separated list of flags
+
+This argument expects a commer sperated list of flags of the form RD, AA, AD etc.  if the respose observed by the probe does not contain all flags the probe is put into a critical state. if more flags exist they are ignored
+
+###A record check
+This runs checks against an DNS A record measurement
+
+####A Record
+> --a-record 192.0.2.1
+
+checks all Answers seen by a probe to ensure that at least one contains the IPv4 address passed.  If this is not the case then the probe is placed in a critical state
+
+####CNAME Record
+> --cname-record www.example.com
+
+checks all Answers seen by a probe to ensure that at least one contains the cname passed.  If this is not the case then the probe is placed in a critical state
+
+
+###AAAA record check
+This runs checks against an DNS A record measurement
+
+####A Record
+> --aaaa-record 2001:DB8::1
+
+checks all Answers seen by a probe to ensure that at least one contains the IPv6 address passed.  If this is not the case then the probe is placed in a critical state
+
+####CNAME Record
+> --cname-record www.example.com
+
+checks all Answers seen by a probe to ensure that at least one contains the cname passed.  If this is not the case then the probe is placed in a critical state
+
+###SOA Record
+This runs checks against an DNS SOA record measurement
+
+###CNAME Record
+This runs checks against an DNS CNAME record measurement
+
+####CNAME Record
+> --cname-record www.example.com
+
+checks all Answers seen by a probe to ensure that at least one contains the cname passed.  If this is not the case then the probe is placed in a critical state
+
+
+###DS Record
+This runs checks against an DNS DS record measurement
+
+There is a bug in this check, currently dosn't support having multible DS records with different keytags or algorithems
+
+####Key Tag
+> --keytag (int)key tag
+
+if the there are any keytags that do not match this value the check is placed into a criticle stage.
+
+###Algorithm
+> --algorithm (int)algorithem
+
+if there are any DS records that opserved by a probe that dont contain this algorithem the probe is placed into a criticle state
+
+###Digest type
+> --digest-type
+
+if there are any DS records opserved by a probe that dont contain this digest type the probe is placed into a criticle state
+
+###Digest 
+> --digest
+
+if there are any DS records opserved by a probe that dont contain this digest the probe is placed into a criticle state
+
+###DNSKEY Record
+This runs checks against an DNS DNSKEY record measurement
+only the standard checks are implmented
+
 SSL Check
 ---------
 This runs checks against an SSL measurement

@@ -224,7 +224,7 @@ class AnswerDnsDS(AnswerDns):
                 self.check_string("algorithm",
                         self.algorithm, args.algorithm, message)
             if args.digest_type:
-                self.check_string("digest",
+                self.check_string("digest_type",
                         self.digest_type, args.digest_type, message)
             if args.digest:
                 self.check_string("digest",
