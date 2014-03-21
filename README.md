@@ -63,6 +63,8 @@ The following argumens are valid for all DNS Checks
 
 This argument expects a sting of the form NOERROR, NXDOMAIN NODATA etc.  if a probe sees an rcode which differes to the argument then the probe is put into a critical state
 
+BUG:This dosn't seem to be working as advertised
+
 ####Flags
 > --flags comma separated list of flags
 

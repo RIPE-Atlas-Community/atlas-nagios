@@ -241,8 +241,7 @@ class MeasurmentDns(Measurment):
             message.add_ok(self.probe_id, self.msg % (
                     msg, "DNS RCODE"))
         else:
-            message.add_error(self.probe_id, self.msg % (
-                    msg, "DNS RCODE"))
+            message.add_error(self.probe_id, self.msg % (msg, "DNS RCODE"))
 
     def check_flags(self, flags, message):
         """Check the flags returned in the check are the same as flags"""
@@ -256,10 +255,8 @@ class MeasurmentDns(Measurment):
 
     def check(self, args, message):
         """Main Check routine"""
+        self.check_rcode(args.rcode, message)
         Measurment.check(self, args, message)
-
-        if args.rcode:
-            self.check_rcode(args.rcode, message)
         if args.flags:
             self.check_flags(args.flags, message)
 
