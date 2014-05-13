@@ -1,3 +1,26 @@
+#Copyright (c) 2014, John Bond <mail@johnbond.org>
+#All rights reserved.
+#
+#Redistribution and use in source and binary forms, with or without
+#modification, are permitted provided that the following conditions are met: 
+#
+#1. Redistributions of source code must retain the above copyright notice, this
+#   list of conditions and the following disclaimer. 
+#2. Redistributions in binary form must reproduce the above copyright notice,
+#   this list of conditions and the following disclaimer in the documentation
+#   and/or other materials provided with the distribution. 
+#
+#THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+#ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+#WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+#DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+#ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+#(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+#LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+#ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+#(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+#SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 import sys
 import time
 import argparse
@@ -43,7 +66,7 @@ def get_measurements(measurement_id, key=None):
     however this one has less junk
     https://atlas.ripe.net/api/internal/measurement-latest/%s/
     '''
-    url = "https://atlas.ripe.net/api/v1/measurement/%s/latest/" % measurement_id
+    url = "https://atlas.ripe.net/api/internal/measurement-latest/%s/" % measurement_id
     if (key):
         url = url + "?key=%s" % key
     return get_response(url)
@@ -52,9 +75,8 @@ def get_measurements(measurement_id, key=None):
 def parse_measurements(measurements, measurement_type, message):
     '''Parse the measuerment'''
     parsed_measurements = []
-    for measurement in measurements:
-        probe_id = measurement[1]
-        if measurement[5] == None:
+    for probe_id, measurement in measurements.iteritems():
+        if measurement == None:
             message.add_error(probe_id, "No data")
             continue
         parsed_measurements.append(
@@ -68,7 +90,7 @@ def parse_measurements(measurements, measurement_type, message):
                 'http': MeasurmentHTTP,
                 'ping': MeasurmentPing,
                 'ssl': MeasurmentSSL,
-            }.get(measurement_type.lower(), Measurment)(probe_id, measurement[5])
+            }.get(measurement_type.lower(), Measurment)(probe_id, measurement)
         )
         #parsed_measurements.append(MeasurmentSSL(probe_id, measurement[5]))
     return parsed_measurements

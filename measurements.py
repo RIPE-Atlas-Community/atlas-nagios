@@ -1,9 +1,33 @@
+#Copyright (c) 2014, John Bond <mail@johnbond.org>
+#All rights reserved.
+#
+#Redistribution and use in source and binary forms, with or without
+#modification, are permitted provided that the following conditions are met: 
+#
+#1. Redistributions of source code must retain the above copyright notice, this
+#   list of conditions and the following disclaimer. 
+#2. Redistributions in binary form must reproduce the above copyright notice,
+#   this list of conditions and the following disclaimer in the documentation
+#   and/or other materials provided with the distribution. 
+#
+#THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+#ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+#WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+#DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+#ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+#(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+#LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+#ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+#(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+#SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 import sys
 import time
 import argparse
 import requests
 import json
 import pprint
+from dns_answers import AnswerDnsA, AnswerDnsAAAA, AnswerDnsCNAME, AnswerDnsDS, AnswerDnsDNSKEY, AnswerDnsSOA
 
 class Measurment:
     """Parent object for an atlas measurment"""
@@ -12,7 +36,8 @@ class Measurment:
         """Initiate generic message data"""
         self.probe_id = probe_id
         self.payload = payload
-        self.check_time = self.payload[1]
+        self.check_time = self.payload['timestamp']
+        self.result = self.payload['result']
         self.msg = "%s (%s)"
 
     @staticmethod
@@ -29,7 +54,14 @@ class Measurment:
         parser.add_argument('-k', '--key',
                 help="API key for non-public measurements")
         parser.add_argument('--max_measurement_age', type=int, default=3600,
-                help='The max age of a measuerment in unix time')
+                help='The max age of a measuerment in seconds')
+
+    def ensure_list(self, list_please):
+        """make @list_please a list if it isn't one already"""
+        if type(list_please) != list:
+            return [(list_please)]
+        else:
+            return list_please
 
     def check_measurement_age(self, max_age, message):
         """Check if a measerment is fresh enough"""
@@ -64,19 +96,19 @@ class MeasurmentSSL(Measurment):
         """Initiate object"""
         #super(Measurment, self).__init__(payload)
         Measurment.__init__(self, probe_id, payload)
-        self.common_name = self.payload[2][0][0]
-        self.expiry = time.mktime(
-                time.strptime(self.payload[2][0][4],"%Y%m%d%H%M%SZ"))
-        self.sha1 = self.payload[2][0][5]
+        self.common_name = self.result[0][0]
+        self.expire = time.mktime(
+                time.strptime(self.result[0][4],"%Y%m%d%H%M%SZ"))
+        self.sha1 = self.result[0][5]
 
     @staticmethod
     def add_args(subparser):
         """add SSL arguments"""
         parser = subparser.add_parser('ssl', help='SSL check')
         Measurment.add_args(parser)
-        parser.add_argument('--common_name',
+        parser.add_argument('--common-name',
                 help='Ensure a cert has this cn')
-        parser.add_argument('--sslexpiry', type=int, default=30,
+        parser.add_argument('--ssl-expire-days', type=int, default=30,
                 help="Ensure certificate dosne't expire in x days")
         parser.add_argument('--sha1hash',
                 help="Ensure certificate has this sha1 hash")
@@ -84,17 +116,18 @@ class MeasurmentSSL(Measurment):
     def check_expiry(self, warn_expiry, message):
         """Check if the certificat is going to expire before warn_expiry"""
         current_time = time.time()
-        warn_time = current_time - (warn_expiry * 60 * 60 * 24)
-        expiry_str = time.ctime(self.expiry)
-        if self.expiry < current_time:
+        warn_time = current_time + (warn_expiry * 60 * 60 * 24)
+        expire_str = time.ctime(self.expire)
+        if self.expire < current_time:
             message.add_error(self.probe_id, self.msg % (
-                    "certificate expierd", expiry_str))
-        elif self.expiry < warn_time:
+                    "certificate expierd", expire_str))
+            return
+        elif self.expire < warn_time:
             message.add_warn(self.probe_id, self.msg % (
-                    "certificate expires soon", expiry_str))
+                    "certificate expires soon", expire_str))
         else:
             message.add_ok(self.probe_id, self.msg % (
-                    "certificate expiry good", expiry_str))
+                    "certificate expiry good", expire_str))
 
     def check(self, args, message):
         """Main SSL check routine"""
@@ -105,8 +138,8 @@ class MeasurmentSSL(Measurment):
         if args.common_name:
             self.check_string( args.common_name,
                     self.common_name, 'cn', message)
-        if args.sslexpiry:
-            self.check_expiry(args.sslexpiry, message)
+        if args.ssl_expire_days:
+            self.check_expiry(args.ssl_expire_days, message)
 
 
 class MeasurmentPing(Measurment):
@@ -116,18 +149,18 @@ class MeasurmentPing(Measurment):
         """Initiate object"""
         #super(Measurment, self).__init__(self, payload)
         Measurment.__init__(self, probe_id, payload)
-        self.avg_rtt = self.payload[0]
+        self.avg_rtt = self.payload['average']
 
     @staticmethod
     def add_args(subparser):
         """add SSL arguments"""
         parser = subparser.add_parser('ping', help='SSL check')
         Measurment.add_args(parser)
-        parser.add_argument('--rtt_max',
+        parser.add_argument('--rtt-max', type=float,
                 help='Ensure the max ttl is below this')
-        parser.add_argument('--rtt_min',
+        parser.add_argument('--rtt-min', type=float,
                 help='Ensure the min ttl is below this')
-        parser.add_argument('--rtt_avg',
+        parser.add_argument('--rtt-avg', type=float,
                 help='Ensure the avg ttl is below this')
 
     def check_rtt(self, check_type, rtt, message):
@@ -160,10 +193,10 @@ class MeasurmentHTTP(Measurment):
         #super(Measurment, self).__init__(self, payload)
         Measurment.__init__(self, probe_id, payload)
         try:
-            self.status = self.payload[2][0]['res']
+            self.status = self.result[0]['res']
         except KeyError:
             try:
-                self.status = self.payload[2][0]['dnserr']
+                self.status = self.result[0]['dnserr']
             except KeyError:
                 #probably a time out, should use a better status code
                 self.status = 500
@@ -173,7 +206,7 @@ class MeasurmentHTTP(Measurment):
         """add SSL arguments"""
         parser = subparser.add_parser('http', help='SSL check')
         Measurment.add_args(parser)
-        parser.add_argument('--status_code', type=int, default=200,
+        parser.add_argument('--status-code', type=int, default=200,
                 help='Ensure the site returns this status code')
 
     def check_status(self, check_status, message):
@@ -204,16 +237,15 @@ class MeasurmentDns(Measurment):
         """Initiate Object"""
         #super(Measurment, self).__init__(self, payload)
         Measurment.__init__(self, probe_id, payload)
-        self.additional = self.payload[2]['additional']
-        self.question = { 'qname': "", 'qtype': "", 'question':"" }
+        self.additional = self.result['additional']
+        self.question = { 'qname': '', 'qtype': '' }
         self.question['qname'], _, self.question['qtype'] = \
-                self.payload[2]['question'].split()
-        self.authority = self.payload[2]['authority']
-        self.rcode = self.payload[2]['rcode']
-        self.flags = self.payload[2]['flags']
+                self.result['question'].split()
+        self.authority = self.result['authority']
+        self.rcode = self.result['rcode']
+        self.flags = self.result['flags']
         self.answer = []
-        if self.rcode == "NOERROR":
-            self.answer_raw = ensure_list(self.payload[2]['answer'])
+        self.answer_raw = self.ensure_list(self.result['answer'])
 
     @staticmethod
     def add_args(parser):
@@ -221,7 +253,7 @@ class MeasurmentDns(Measurment):
         Measurment.add_args(parser)
         parser.add_argument('--flags',
                 help='Comma seperated list of flags to expect')
-        parser.add_argument('--rcode',
+        parser.add_argument('--rcode', default='NOERROR',
                 help='rcode to expect')
 
 
@@ -232,8 +264,7 @@ class MeasurmentDns(Measurment):
             message.add_ok(self.probe_id, self.msg % (
                     msg, "DNS RCODE"))
         else:
-            message.add_error(self.probe_id, self.msg % (
-                    msg, "DNS RCODE"))
+            message.add_error(self.probe_id, self.msg % (msg, "DNS RCODE"))
 
     def check_flags(self, flags, message):
         """Check the flags returned in the check are the same as flags"""
@@ -247,10 +278,8 @@ class MeasurmentDns(Measurment):
 
     def check(self, args, message):
         """Main Check routine"""
+        self.check_rcode(args.rcode, message)
         Measurment.check(self, args, message)
-
-        if args.rcode:
-            self.check_rcode(args.rcode, message)
         if args.flags:
             self.check_flags(args.flags, message)
 
@@ -263,7 +292,8 @@ class MeasurmentDnsA(MeasurmentDns):
         #super(Measurment, self).__init__(self, payload)
         MeasurmentDns.__init__(self, probe_id, payload)
         for ans in self.answer_raw:
-            self.answer.append(AnswerDnsA(self.probe_id, ans))
+            if ans:
+                self.answer.append(AnswerDnsA(self.probe_id, ans))
 
     @staticmethod
     def add_args(subparser):
@@ -302,7 +332,8 @@ class MeasurmentDnsAAAA(MeasurmentDns):
         #super(Measurment, self).__init__(self, payload)
         MeasurmentDns.__init__(self, probe_id, payload)
         for ans in self.answer_raw:
-            self.answer.append(AnswerDnsAAAA(self.probe_id, ans))
+            if ans:
+                self.answer.append(AnswerDnsAAAA(self.probe_id, ans))
 
     @staticmethod
     def add_args(subparser):
@@ -342,7 +373,8 @@ class MeasurmentDnsCNAME(MeasurmentDns):
         #super(Measurment, self).__init__(self, payload)
         MeasurmentDns.__init__(self, probe_id, payload)
         for ans in self.answer_raw:
-            self.answer.append(AnswerDnsCNAME(self.probe_id, ans))
+            if ans:
+                self.answer.append(AnswerDnsCNAME(self.probe_id, ans))
 
     @staticmethod
     def add_args(subparser):
@@ -372,7 +404,8 @@ class MeasurmentDnsDS(MeasurmentDns):
         #super(Measurment, self).__init__(self, payload)
         MeasurmentDns.__init__(self, probe_id, payload)
         for ans in self.answer_raw:
-            self.answer.append(AnswerDnsDS(self.probe_id, ans))
+            if ans:
+                self.answer.append(AnswerDnsDS(self.probe_id, ans))
 
     @staticmethod
     def add_args(subparser):
@@ -384,7 +417,7 @@ class MeasurmentDnsDS(MeasurmentDns):
         parser.add_argument('--algorithm',
                 help='Ensure the RR set from the answer \
                         contains a algorithm record with this string')
-        parser.add_argument('--digest_type',
+        parser.add_argument('--digest-type',
                 help='Ensure the RR set from the answer \
                         contains a digest type record with this string')
         parser.add_argument('--digest',
@@ -404,7 +437,8 @@ class MeasurmentDnsDNSKEY(MeasurmentDns):
         """Initiate Object"""
         MeasurmentDns.__init__(self, probe_id, payload)
         for ans in self.answer_raw:
-            self.answer.append(AnswerDnsDNSKEY(self.probe_id, ans))
+            if ans:
+                self.answer.append(AnswerDnsDNSKEY(self.probe_id, ans))
 
     @staticmethod
     def add_args(subparser):
@@ -424,7 +458,8 @@ class MeasurmentDnsSOA(MeasurmentDns):
         #super(Measurment, self).__init__(self, payload)
         MeasurmentDns.__init__(self, probe_id, payload)
         for ans in self.answer_raw:
-            self.answer.append(AnswerDnsSOA(self.probe_id, ans))
+            if ans:
+                self.answer.append(AnswerDnsSOA(self.probe_id, ans))
 
     @staticmethod
     def add_args(subparser):
