@@ -7,6 +7,8 @@ import pprint
 
 from measurements import *
 
+def create_measuerment(api_key, target, description=None, measuerment_type='ping', af='4', ):
+    '''Create a new measuerment'''
 def ensure_list(list_please):
     """make @list_please a list if it isn't one already"""
     if type(list_please) != list:
