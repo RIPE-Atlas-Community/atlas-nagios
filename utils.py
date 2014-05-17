@@ -30,8 +30,6 @@ import pprint
 
 from measurements import *
 
-def create_measuerment(api_key, target, description=None, measuerment_type='ping', af='4', ):
-    '''Create a new measuerment'''
 def ensure_list(list_please):
     """make @list_please a list if it isn't one already"""
     if type(list_please) != list:
@@ -41,12 +39,8 @@ def ensure_list(list_please):
 
 def get_response(url):
     '''Fetch a Json Object from url'''
-    headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-            }
     try:
-        request = requests.get(url,headers=headers)
+        request = requests.get(url)
         request.raise_for_status()
     except requests.exceptions.RequestException as error:
         print '''Unknown: Fatal error when reading request: %s''' % error
@@ -62,11 +56,12 @@ def get_response(url):
 def get_measurements(measurement_id, key=None):
     '''Fetch a measuerment with it=measurement_id'''
     '''api changed probably this one :
-    https://atlas.ripe.net/api/internal/measurement-latst/%s/
+    https://atlas.ripe.net/api/internal/measurement-last/%s/
     however this one has less junk
     https://atlas.ripe.net/api/internal/measurement-latest/%s/
     '''
-    url = "https://atlas.ripe.net/api/internal/measurement-latest/%s/" % measurement_id
+    #url = "https://atlas.ripe.net/api/internal/measurement-latest/%s/" % measurement_id
+    url = "https://atlas.ripe.net/api/v1/measurement-latest/%s/" % measurement_id
     if (key):
         url = url + "?key=%s" % key
     return get_response(url)
@@ -75,7 +70,7 @@ def get_measurements(measurement_id, key=None):
 def parse_measurements(measurements, measurement_type, message):
     '''Parse the measuerment'''
     parsed_measurements = []
-    for probe_id, measurement in measurements.iteritems():
+    for probe_id, measurement in measurements.items():
         if measurement == None:
             message.add_error(probe_id, "No data")
             continue
@@ -83,14 +78,13 @@ def parse_measurements(measurements, measurement_type, message):
             {
                 'a': MeasurmentDnsA,
                 'aaaa': MeasurmentDnsAAAA,
-                'cname': MeasurmentDnsCNAME,
                 'ds': MeasurmentDnsDS,
                 'dnskey' : MeasurmentDnsDNSKEY,
                 'soa': MeasurmentDnsSOA,
                 'http': MeasurmentHTTP,
                 'ping': MeasurmentPing,
                 'ssl': MeasurmentSSL,
-            }.get(measurement_type.lower(), Measurment)(probe_id, measurement)
+            }.get(measurement_type.lower(), Measurment)(probe_id, measurement[0])
         )
         #parsed_measurements.append(MeasurmentSSL(probe_id, measurement[5]))
     return parsed_measurements
@@ -100,3 +94,5 @@ def check_measurements(measurements, args, message):
     '''check the measuerment'''
     for measurement in measurements:
         measurement.check(args, message)
+
+

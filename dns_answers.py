@@ -36,11 +36,6 @@ class AnswerDns:
         self.answer = answer
         self.probe_id = probe_id
         self.msg = "%s (%s)"
-        try:
-            if "RRSIG" == self.answer.split()[3]:
-                self.rrtype = "RRSIG"
-        except IndexError:
-            print self.answer
 
     @staticmethod
     def add_args(subparser):
@@ -69,7 +64,7 @@ class AnswerDnsSOA(AnswerDns):
         AnswerDns.__init__(self, probe_id, answer)
         try:
             if "SOA" == self.answer.split()[3]:
-                self.qname, self.ttl, _,  self.rrtype, self.mname, \
+                self.qname, self.ttl, _,  self.answer.type, self.mname, \
                         self.rname, self.serial, self.refresh, self.update, \
                         self.expire, self.nxdomain = answer.split()
         except IndexError:
@@ -77,11 +72,11 @@ class AnswerDnsSOA(AnswerDns):
 
     def check(self, args, message):
         """Main Check routine"""
-        if self.rrtype == "RRSIG":
+        if self.answer.type == "RRSIG":
             return
-        elif self.rrtype != "SOA":
+        elif self.answer.type != "SOA":
             message.add_error(self.probe_id, self.msg % (
-                    "RRTYPE", self.rrtype))
+                    "RRTYPE", self.answer.type))
             return
         else:
             if args.mname:
@@ -111,31 +106,19 @@ class AnswerDnsA(AnswerDns):
     """Parent class to hold dns A measuerment payloads"""
     def __init__(self, probe_id, answer ):
         AnswerDns.__init__(self, probe_id, answer)
-        try:
-            if "A" == self.answer.split()[3]:
-                self.qname, self.ttl, _, self.rrtype, \
-                        self.rdata = answer.split()
-            elif "CNAME" == self.answer.split()[3]:
-                self.qname, self.ttl, _, self.rrtype, \
-                        self.rdata = answer.split()
-        except IndexError:
-            print self.answer
 
     def check(self, args, message):
-        """Main Check routine"""
-        if self.rrtype == "RRSIG":
+        '''Main Check routine'''
+        if self.answer.type == 'RRSIG':
             return
-        elif self.rrtype != "A" and self.rrtype != "CNAME":
+        elif self.answer.type != 'A' and self.answer.type != 'CNAME':
             message.add_error(self.probe_id, self.msg % (
-                    "RRTYPE", self.rrtype))
+                    'RRTYPE', self.answer.type))
             return
         else:
-            if args.cname_record and self.rrtype == "CNAME":
-                self.check_string("cname",
-                        self.rdata, args.cname_record, message)
-            if args.a_record and self.rrtype == "A":
-                self.check_string("a",
-                        self.rdata, args.a_record, message)
+            if args.answer:
+                self.check_string('answer',
+                        self.answer.address, args.answer, message)
 
 
 class AnswerDnsAAAA(AnswerDns):
@@ -144,27 +127,27 @@ class AnswerDnsAAAA(AnswerDns):
         AnswerDns.__init__(self, probe_id, answer)
         try:
             if "AAAA" == self.answer.split()[3]:
-                self.qname, self.ttl, _, self.rrtype, \
+                self.qname, self.ttl, _, self.answer.type, \
                         self.rdata = answer.split()
             elif "CNAME" == self.answer.split()[3]:
-                self.qname, self.ttl, _, self.rrtype, \
+                self.qname, self.ttl, _, self.answer.type, \
                         self.rdata = answer.split()
         except IndexError:
             print self.answer
 
     def check(self, args, message):
         """Main Check routine"""
-        if self.rrtype == "RRSIG":
+        if self.answer.type == "RRSIG":
             return
-        elif self.rrtype != "AAAA" and self.rrtype != "CNAME":
+        elif self.answer.type != "AAAA" and self.answer.type != "CNAME":
             message.add_error(self.probe_id, self.msg % (
-                    "RRTYPE", self.rrtype))
+                    "RRTYPE", self.answer.type))
             return
         else:
-            if args.cname_record and self.rrtype == "CNAME":
+            if args.cname_record and self.answer.type == "CNAME":
                 self.check_string("cname",
                         self.rdata, args.cname_record, message)
-            if args.aaaa_record and self.rrtype == "AAAA":
+            if args.aaaa_record and self.answer.type == "AAAA":
                 self.check_string("aaaa",
                         self.rdata, args.aaaa_record, message)
 
@@ -175,18 +158,18 @@ class AnswerDnsCNAME(AnswerDns):
         AnswerDns.__init__(self, probe_id, answer)
         try:
             if "CNAME" == self.answer.split()[3]:
-                self.qname, self.ttl, _, self.rrtype, \
+                self.qname, self.ttl, _, self.answer.type, \
                         self.rdata = answer.split()
         except IndexError:
             print self.answer
 
     def check(self, args, message):
         """Main Check routine"""
-        if self.rrtype == "RRSIG":
+        if self.answer.type == "RRSIG":
             return
-        elif self.rrtype != "CNAME":
+        elif self.answer.type != "CNAME":
             message.add_error(self.probe_id, self.msg % (
-                    "RRTYPE", self.rrtype))
+                    "RRTYPE", self.answer.type))
             return
         else:
             if args.cname_record:
@@ -200,7 +183,7 @@ class AnswerDnsDNSKEY(AnswerDns):
         AnswerDns.__init__(self, probe_id, answer)
         try:
             if "DNSKEY" == self.answer.split()[3]:
-                self.qname, self.ttl, _, self.rrtype, \
+                self.qname, self.ttl, _, self.answer.type, \
                         self.flags, self.protocol, self.algorithm, \
                         self.key = answer.split(' ',7)
         except IndexError:
@@ -208,11 +191,11 @@ class AnswerDnsDNSKEY(AnswerDns):
 
     def check(self, args, message):
         """Main Check routine"""
-        if self.rrtype == "RRSIG":
+        if self.answer.type == "RRSIG":
             return
-        elif self.rrtype != "DNSKEY":
+        elif self.answer.type != "DNSKEY":
             message.add_error(self.probe_id, self.msg % (
-                    "RRTYPE", self.rrtype))
+                    "RRTYPE", self.answer.type))
             return
         else:
             #not implmented
@@ -225,7 +208,7 @@ class AnswerDnsDS(AnswerDns):
         AnswerDns.__init__(self, probe_id, answer)
         try:
             if "DS" == self.answer.split()[3]:
-                self.qname, self.ttl, _, self.rrtype, self.keytag, \
+                self.qname, self.ttl, _, self.answer.type, self.keytag, \
                         self.algorithm, self.digest_type, \
                         self.digest = answer.split()
         except IndexError:
@@ -233,11 +216,11 @@ class AnswerDnsDS(AnswerDns):
 
     def check(self, args, message):
         """Main Check routine"""
-        if self.rrtype == "RRSIG":
+        if self.answer.type == "RRSIG":
             return
-        elif self.rrtype != "DS":
+        elif self.answer.type != "DS":
             message.add_error(self.probe_id, self.msg % (
-                    "RRTYPE", self.rrtype))
+                    "RRTYPE", self.answer.type))
             return
         else:
             if args.keytag:

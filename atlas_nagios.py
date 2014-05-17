@@ -44,7 +44,6 @@ def arg_parse():
             title="Supported DNS Measuerment types", dest='name')
     MeasurmentDnsA.add_args(dns_subparsers)
     MeasurmentDnsAAAA.add_args(dns_subparsers)
-    MeasurmentDnsCNAME.add_args(dns_subparsers)
     MeasurmentDnsDS.add_args(dns_subparsers)
     MeasurmentDnsDNSKEY.add_args(dns_subparsers)
     MeasurmentDnsSOA.add_args(dns_subparsers)
@@ -60,6 +59,12 @@ def main():
     parsed_measurements = parse_measurements(
             measurements, args.name, message)
     check_measurements(parsed_measurements, args, message)
+    if len(measurements) < args.crit_probes:
+        print 'ERROR: only recived {} messages'.format(len(measurements))
+        sys.exit(2)
+    elif len(measurements) < args.warn_probes:
+        print 'WARN: only recived {} messages'.format(len(measurements))
+        sys.exit(1)
     message.exit(args)
 
 
