@@ -339,37 +339,60 @@ class MeasurmentDnsAAAA(MeasurmentDns):
 
 class MeasurmentDnsDS(MeasurmentDns):
     '''class for a dns DS measuerment'''
-
+    
     def __init__(self, probe_id, payload):
         '''Initiate Object'''
         #super(Measurment, self).__init__(self, payload)
         MeasurmentDns.__init__(self, probe_id, payload)
-        for ans in self.answer_raw:
-            if ans:
-                self.answers_check.append(AnswerDnsDS(self.probe_id, ans))
 
     @staticmethod
     def add_args(subparser):
         parser = subparser.add_parser('DS', help='CNAME DS check')
         MeasurmentDns.add_args(parser)
         parser.add_argument('--keytag',
-                help='Ensure the RR set from the answer \
-                        contains a keytag record with this string')
+                help='Only check this keytag error if we dont see this')
         parser.add_argument('--algorithm',
-                help='Ensure the RR set from the answer \
-                        contains a algorithm record with this string')
+                help='Only check this algorithm error if we dont see this')
         parser.add_argument('--digest-type',
-                help='Ensure the RR set from the answer \
-                        contains a digest type record with this string')
+                help='Only check this digest type error if we dont see this')
         parser.add_argument('--digest',
-                help='Ensure the RR set from the answer \
-                        contains a digest record with this string')
+                help='Ensure we see this digest')
 
     def check(self, args, message):
         MeasurmentDns.check(self, args, message)
-        for ans in self.answer:
-            ans.check(args, message)
-
+        keytag_found = False
+        algorithm_found = False
+        digest_type_found = False
+        for answer in self.answers:
+            if answer.type == 'RRSIG':
+                continue
+            elif answer.type != 'DS':
+                message.add_error(self.probe_id, self.msg % (
+                    'RRTYPE', self.answer.type))
+            else:
+                if args.keytag:
+                    if int(args.keytag) == (answer.key_tag):
+                        keytag_found = True
+                    else:
+                        continue
+                if args.algorithm:
+                    if int(args.algorithm) == int(answer.algo):
+                        algorithm_found = True
+                    else:
+                        continue
+                if args.digest_type:
+                    if int(args.digest_type) == int(answer.digest_type):
+                        digest_type_found = True
+                    else:
+                        continue
+                if args.digest:
+                    self.check_string( args.digest, answer.digest, 'digest', message)
+        if args.keytag and not keytag_found:
+            message.add_error(self.probe_id, 'Keytag ({}) not found'.format(args.keytag))
+        if args.algorithm and not algorithm_found:
+            message.add_error(self.probe_id, 'Algorithem ({}) not found'.format(args.algorithm))
+        if args.digest_type and not digest_type_found:
+            message.add_error(self.probe_id, 'Digest Type ({}) not found'.format(args.digest_type))
 
 class MeasurmentDnsDNSKEY(MeasurmentDns):
     '''class for a dns DNSKEY measurement'''
@@ -389,7 +412,6 @@ class MeasurmentDnsDNSKEY(MeasurmentDns):
 
     def check(self, args, message):
         MeasurmentDns.check(self, args, message)
-        dnskey = ''.join(args.dnskey.split())
         for answer in self.answers:
             if answer.type == 'RRSIG':
                 continue
@@ -398,6 +420,7 @@ class MeasurmentDnsDNSKEY(MeasurmentDns):
                     'RRTYPE', self.answer.type))
             else:
                 if args.dnskey:
+                    dnskey = ''.join(args.dnskey.split())
                     self.check_string( dnskey, answer.data, 'dnskey', message)
                 if args.flags:
                     self.check_string( args.dnskey_flags, answer.flags, 'dnskey flags', message)

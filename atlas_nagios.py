@@ -26,7 +26,6 @@ import argparse
 
 from messages import ProbeMessage
 from measurements import *
-from dns_answers import *
 from utils import get_response,get_measurements,check_measurements, parse_measurements
 
 def arg_parse():
