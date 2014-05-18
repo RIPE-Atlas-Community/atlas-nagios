@@ -240,42 +240,47 @@ class MeasurmentDns(Measurment):
             self.authorities = self.parsed.responses[0].authorities
             self.additionals = self.parsed.responses[0].additionals
             self.rcode = self.parsed.responses[0].header.return_code
+            self.aa = self.parsed.responses[0].header.aa
+            self.rd = self.parsed.responses[0].header.rd
+            self.ra = self.parsed.responses[0].header.ra
+            self.ad = self.parsed.responses[0].header.ad
+            self.cd = self.parsed.responses[0].header.cd
 
     @staticmethod
     def add_args(parser):
         '''add default dns args'''
         Measurment.add_args(parser)
-        parser.add_argument('--flags',
-                help='Comma seperated list of flags to expect')
-        parser.add_argument('--rcode', default='NOERROR',
-                help='rcode to expect')
+
+        parser.add_argument('--aa', action='store_true', help='Response must have AA flag')
+        parser.add_argument('--rd', action='store_true', help='Response must have RD flag')
+        parser.add_argument('--ra', action='store_true', help='Response must have RA flag')
+        parser.add_argument('--ad', action='store_true', help='Response must have AD flag')
+        parser.add_argument('--cd', action='store_true', help='Response must have CD flag')
+        parser.add_argument('--rcode', default='NOERROR', help='rcode to expect')
 
 
     def check_rcode(self, rcode, message):
         '''Check the RCODE is the same as rcode'''
         msg = "desired (%s), real (%s)" % ( rcode, self.rcode)
         if self.rcode == rcode:
-            message.add_ok(self.probe_id, self.msg % (
-                    msg, self.rcode))
+            message.add_ok(self.probe_id, msg)
         else:
-            message.add_error(self.probe_id, self.msg % (msg, self.rcode))
-
-    def check_flags(self, flags, message):
-        '''Check the flags returned in the check are the same as flags'''
-        for flag in flags.split(","):
-            if flag in self.flags.split():
-                message.add_ok(self.probe_id, self.msg % (
-                        "Flag found", flag))
-            else:
-                message.add_error(self.probe_id, self.msg % (
-                        "Flag Missing ", flag))
+            message.add_error(self.probe_id, msg)
 
     def check(self, args, message):
         '''Main Check routine'''
         self.check_rcode(args.rcode, message)
         Measurment.check(self, args, message)
-        if args.flags:
-            self.check_flags(args.flags, message)
+        if args.aa and not self.aa:
+            message.add_error(self.probe_id, 'AA Flag not set')
+        if args.rd and not self.rd:
+            message.add_error(self.probe_id, 'RD Flag not set')
+        if args.ra and not self.ra:
+            message.add_error(self.probe_id, 'RA Flag not set')
+        if args.ad and not self.ad:
+            message.add_error(self.probe_id, 'AD Flag not set')
+        if args.cd and not self.cd:
+            message.add_error(self.probe_id, 'CD Flag not set')
 
 
 class MeasurmentDnsA(MeasurmentDns):
