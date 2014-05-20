@@ -40,7 +40,7 @@ class Measurment:
 
     @staticmethod
     def add_args(parser):
-        '''add SSL arguments'''
+        '''add arguments'''
         parser.add_argument('-v', '--verbose', action='count',
                 help='Increase verbosity')
         parser.add_argument("measurement_id",
@@ -227,6 +227,7 @@ class MeasurmentDns(Measurment):
     authorities = []
     additionals = []
     parse_error = False
+    nsid = None
 
     def __init__(self, probe_id, payload):
         '''Initiate Object'''
@@ -244,6 +245,10 @@ class MeasurmentDns(Measurment):
             self.ra = self.parsed.responses[0].header.ra
             self.ad = self.parsed.responses[0].header.ad
             self.cd = self.parsed.responses[0].header.cd
+            if self.parsed.responses[0].edns0:
+                for opt in self.parsed.responses[0].edns0.options:
+                    if opt.nsid:
+                        self.nsid = opt.nsid 
         else:
             self.parse_error = True
 
@@ -258,6 +263,7 @@ class MeasurmentDns(Measurment):
         parser.add_argument('--ad', action='store_true', help='Response must have AD flag')
         parser.add_argument('--cd', action='store_true', help='Response must have CD flag')
         parser.add_argument('--rcode', default='NOERROR', help='rcode to expect')
+        parser.add_argument('--nsid', help='the nsid to expect')
 
 
     def check_rcode(self, rcode, message):
@@ -273,6 +279,12 @@ class MeasurmentDns(Measurment):
         self.check_rcode(args.rcode, message)
         Measurment.check(self, args, message)
         if not self.parse_error:
+            if args.nsid:
+                if not self.nsid:
+                    message.add_error(self.probe_id, 'no nsid recived')
+                elif args.nsid != self.nsid:
+                    message.add_error(self.probe_id, 'nsid mismatch: {}!={}'.format(
+                        args.nsid, self.nsid))
             if args.aa and not self.aa:
                 message.add_error(self.probe_id, 'AA Flag not set')
             if args.rd and not self.rd:
