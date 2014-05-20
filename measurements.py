@@ -341,6 +341,36 @@ class MeasurmentDnsAAAA(MeasurmentDns):
             elif args.answer:
                 self.check_string( args.answer, answer.answer, 'answer', message)
 
+class MeasurmentDnsNS(MeasurmentDns):
+    '''class for a dns NS measuerment'''
+
+    def __init__(self, probe_id, payload):
+        '''Initiate Object'''
+        #super(Measurment, self).__init__(self, payload)
+        MeasurmentDns.__init__(self, probe_id, payload)
+
+    @staticmethod
+    def add_args(subparser):
+        parser = subparser.add_parser('NS', help='NS DNS check')
+        MeasurmentDns.add_args(parser)
+        parser.add_argument('--answer',
+                help='Ensure the RR set from the answer \
+                        contains a this string can also check if we get a cname')
+
+    def check(self, args, message):
+        if self.parsed.is_error:
+            message.add_error(self.probe_id, self.probe_id % (
+                    'GENRAL',self.parsed.raw_data))
+        else:
+            MeasurmentDns.check(self, args, message)
+            for answer in self.answers:
+                if answer.type == 'RRSIG':
+                    continue
+                elif answer.type != 'NS':
+                    message.add_error(self.probe_id, self.msg % (
+                        'RRTYPE', answer.type))
+                elif args.answer:
+                    self.check_string( args.answer, answer.answer, 'answer', message)
 
 class MeasurmentDnsDS(MeasurmentDns):
     '''class for a dns DS measuerment'''
