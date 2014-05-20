@@ -45,6 +45,8 @@ def arg_parse():
     MeasurmentDnsAAAA.add_args(dns_subparsers)
     MeasurmentDnsDS.add_args(dns_subparsers)
     MeasurmentDnsDNSKEY.add_args(dns_subparsers)
+    MeasurmentDnsMX.add_args(dns_subparsers)
+    MeasurmentDnsNS.add_args(dns_subparsers)
     MeasurmentDnsSOA.add_args(dns_subparsers)
 
     return parser.parse_args()

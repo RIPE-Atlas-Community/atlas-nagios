@@ -65,11 +65,9 @@ class Measurment:
         '''Check if a measerment is fresh enough'''
         min_time = time.time() - max_age
         if self.payload["timestamp"] < min_time:
-            message.add_error(self.probe_id, self.msg % \
-                    ("measurement to old", self.parsed.created))
+            message.add_error(self.probe_id, "measurement to old: {}".format(self.parsed.created))
         else:
-            message.add_ok(self.probe_id, self.msg % \
-                    ("measurement fresh", self.parsed.created))
+            message.add_ok(self.probe_id, "measurement fresh: {}".format(self.parsed.created))
 
     def check_string(self, check_string, measurment_string,
             check_type, message):
@@ -228,6 +226,7 @@ class MeasurmentDns(Measurment):
     answers = []
     authorities = []
     additionals = []
+    parse_error = False
 
     def __init__(self, probe_id, payload):
         '''Initiate Object'''
@@ -245,6 +244,8 @@ class MeasurmentDns(Measurment):
             self.ra = self.parsed.responses[0].header.ra
             self.ad = self.parsed.responses[0].header.ad
             self.cd = self.parsed.responses[0].header.cd
+        else:
+            self.parse_error = True
 
     @staticmethod
     def add_args(parser):
@@ -271,16 +272,20 @@ class MeasurmentDns(Measurment):
         '''Main Check routine'''
         self.check_rcode(args.rcode, message)
         Measurment.check(self, args, message)
-        if args.aa and not self.aa:
-            message.add_error(self.probe_id, 'AA Flag not set')
-        if args.rd and not self.rd:
-            message.add_error(self.probe_id, 'RD Flag not set')
-        if args.ra and not self.ra:
-            message.add_error(self.probe_id, 'RA Flag not set')
-        if args.ad and not self.ad:
-            message.add_error(self.probe_id, 'AD Flag not set')
-        if args.cd and not self.cd:
-            message.add_error(self.probe_id, 'CD Flag not set')
+        if not self.parse_error:
+            if args.aa and not self.aa:
+                message.add_error(self.probe_id, 'AA Flag not set')
+            if args.rd and not self.rd:
+                message.add_error(self.probe_id, 'RD Flag not set')
+            if args.ra and not self.ra:
+                message.add_error(self.probe_id, 'RA Flag not set')
+            if args.ad and not self.ad:
+                message.add_error(self.probe_id, 'AD Flag not set')
+            if args.cd and not self.cd:
+                message.add_error(self.probe_id, 'CD Flag not set')
+        else:
+            message.add_error(self.probe_id, self.probe_id % (
+                    'GENRAL',self.parsed.raw_data))
 
 
 class MeasurmentDnsA(MeasurmentDns):
@@ -300,10 +305,7 @@ class MeasurmentDnsA(MeasurmentDns):
                         contains a this string can also check if we get a cname')
 
     def check(self, args, message):
-        if self.parsed.is_error:
-            message.add_error(self.probe_id, self.probe_id % (
-                    'GENRAL',self.parsed.raw_data))
-        else:
+        if not self.parse_error:
             MeasurmentDns.check(self, args, message)
             for answer in self.answers:
                 if answer.type == 'RRSIG':
@@ -332,14 +334,15 @@ class MeasurmentDnsAAAA(MeasurmentDns):
 
     def check(self, args, message):
         MeasurmentDns.check(self, args, message)
-        for answer in self.answers:
-            if answer.type == 'RRSIG':
-                continue
-            elif answer.type != 'AAAA' and answer.type != 'CNAME':
-                message.add_error(self.probe_id, self.msg % (
-                    'RRTYPE', self.answer.type))
-            elif args.answer:
-                self.check_string( args.answer, answer.answer, 'answer', message)
+        if not self.parse_error:
+            for answer in self.answers:
+                if answer.type == 'RRSIG':
+                    continue
+                elif answer.type != 'AAAA' and answer.type != 'CNAME':
+                    message.add_error(self.probe_id, self.msg % (
+                        'RRTYPE', answer.type))
+                elif args.answer:
+                    self.check_string( args.answer, answer.answer, 'answer', message)
 
 class MeasurmentDnsNS(MeasurmentDns):
     '''class for a dns NS measuerment'''
@@ -358,10 +361,7 @@ class MeasurmentDnsNS(MeasurmentDns):
                         contains a this string can also check if we get a cname')
 
     def check(self, args, message):
-        if self.parsed.is_error:
-            message.add_error(self.probe_id, self.probe_id % (
-                    'GENRAL',self.parsed.raw_data))
-        else:
+        if not self.parse_error:
             MeasurmentDns.check(self, args, message)
             for answer in self.answers:
                 if answer.type == 'RRSIG':
@@ -371,6 +371,47 @@ class MeasurmentDnsNS(MeasurmentDns):
                         'RRTYPE', answer.type))
                 elif args.answer:
                     self.check_string( args.answer, answer.answer, 'answer', message)
+
+class MeasurmentDnsMX(MeasurmentDns):
+    '''class for a dns MX measuerment'''
+
+    def __init__(self, probe_id, payload):
+        '''Initiate Object'''
+        #super(Measurment, self).__init__(self, payload)
+        MeasurmentDns.__init__(self, probe_id, payload)
+
+    @staticmethod
+    def add_args(subparser):
+        parser = subparser.add_parser('MX', help='MX DNS check')
+        MeasurmentDns.add_args(parser)
+        parser.add_argument('--exchange',
+                help='Ensure the RR set from the answer \
+                        contains a this string')
+        parser.add_argument('--pref',
+                help='Only check this exhange with this pref, error if we dont see this')
+
+    def check(self, args, message):
+        if not self.parse_error:
+            MeasurmentDns.check(self, args, message)
+            pref_found = False
+            for answer in self.answers:
+                if answer.type == 'RRSIG':
+                    continue
+                elif answer.type != 'MX':
+                    message.add_error(self.probe_id, self.msg % (
+                        'RRTYPE', answer.type))
+                else:
+                    if args.pref:
+                        if int(args.pref) == int(answer.pref):
+                            pref_found = True
+                        else:
+                            continue
+                    if args.exchange:
+                        self.check_string( args.exchange, answer.exchange, 'exchange', message)
+            if args.pref and not pref_found:
+                message.add_error(self.probe_id, 'Pref ({}) not found'.format(args.pref))
+
+
 
 class MeasurmentDnsDS(MeasurmentDns):
     '''class for a dns DS measuerment'''
@@ -394,40 +435,41 @@ class MeasurmentDnsDS(MeasurmentDns):
                 help='Ensure we see this digest')
 
     def check(self, args, message):
-        MeasurmentDns.check(self, args, message)
-        keytag_found = False
-        algorithm_found = False
-        digest_type_found = False
-        for answer in self.answers:
-            if answer.type == 'RRSIG':
-                continue
-            elif answer.type != 'DS':
-                message.add_error(self.probe_id, self.msg % (
-                    'RRTYPE', self.answer.type))
-            else:
-                if args.keytag:
-                    if int(args.keytag) == (answer.key_tag):
-                        keytag_found = True
-                    else:
-                        continue
-                if args.algorithm:
-                    if int(args.algorithm) == int(answer.algo):
-                        algorithm_found = True
-                    else:
-                        continue
-                if args.digest_type:
-                    if int(args.digest_type) == int(answer.digest_type):
-                        digest_type_found = True
-                    else:
-                        continue
-                if args.digest:
-                    self.check_string( args.digest, answer.digest, 'digest', message)
-        if args.keytag and not keytag_found:
-            message.add_error(self.probe_id, 'Keytag ({}) not found'.format(args.keytag))
-        if args.algorithm and not algorithm_found:
-            message.add_error(self.probe_id, 'Algorithem ({}) not found'.format(args.algorithm))
-        if args.digest_type and not digest_type_found:
-            message.add_error(self.probe_id, 'Digest Type ({}) not found'.format(args.digest_type))
+        if not self.parse_error:
+            MeasurmentDns.check(self, args, message)
+            keytag_found = False
+            algorithm_found = False
+            digest_type_found = False
+            for answer in self.answers:
+                if answer.type == 'RRSIG':
+                    continue
+                elif answer.type != 'DS':
+                    message.add_error(self.probe_id, self.msg % (
+                        'RRTYPE', answer.type))
+                else:
+                    if args.keytag:
+                        if int(args.keytag) == (answer.key_tag):
+                            keytag_found = True
+                        else:
+                            continue
+                    if args.algorithm:
+                        if int(args.algorithm) == int(answer.algo):
+                            algorithm_found = True
+                        else:
+                            continue
+                    if args.digest_type:
+                        if int(args.digest_type) == int(answer.digest_type):
+                            digest_type_found = True
+                        else:
+                            continue
+                    if args.digest:
+                        self.check_string( args.digest, answer.digest, 'digest', message)
+            if args.keytag and not keytag_found:
+                message.add_error(self.probe_id, 'Keytag ({}) not found'.format(args.keytag))
+            if args.algorithm and not algorithm_found:
+                message.add_error(self.probe_id, 'Algorithem ({}) not found'.format(args.algorithm))
+            if args.digest_type and not digest_type_found:
+                message.add_error(self.probe_id, 'Digest Type ({}) not found'.format(args.digest_type))
 
 class MeasurmentDnsDNSKEY(MeasurmentDns):
     '''class for a dns DNSKEY measurement'''
@@ -446,23 +488,24 @@ class MeasurmentDnsDNSKEY(MeasurmentDns):
         parser.add_argument('--algo', help='int represting the algorithem')
 
     def check(self, args, message):
-        MeasurmentDns.check(self, args, message)
-        for answer in self.answers:
-            if answer.type == 'RRSIG':
-                continue
-            elif answer.type != 'DNSKEY':
-                message.add_error(self.probe_id, self.msg % (
-                    'RRTYPE', self.answer.type))
-            else:
-                if args.dnskey:
-                    dnskey = ''.join(args.dnskey.split())
-                    self.check_string( dnskey, answer.data, 'dnskey', message)
-                if args.flags:
-                    self.check_string( args.dnskey_flags, answer.flags, 'dnskey flags', message)
-                if args.proto:
-                    self.check_string( args.proto, answer.proto, 'dnskey proto', message)
-                if args.algo:
-                    self.check_string( args.algo, answer.algo, 'dnskey algo', message)
+        if not self.parse_error:
+            MeasurmentDns.check(self, args, message)
+            for answer in self.answers:
+                if answer.type == 'RRSIG':
+                    continue
+                elif answer.type != 'DNSKEY':
+                    message.add_error(self.probe_id, self.msg % (
+                        'RRTYPE', answer.type))
+                else:
+                    if args.dnskey:
+                        dnskey = ''.join(args.dnskey.split())
+                        self.check_string( dnskey, answer.data, 'dnskey', message)
+                    if args.flags:
+                        self.check_string( args.dnskey_flags, answer.flags, 'dnskey flags', message)
+                    if args.proto:
+                        self.check_string( args.proto, answer.proto, 'dnskey proto', message)
+                    if args.algo:
+                        self.check_string( args.algo, answer.algo, 'dnskey algo', message)
 
 class MeasurmentDnsSOA(MeasurmentDns):
     '''class for a dns SOA measuerment'''
@@ -490,26 +533,26 @@ class MeasurmentDnsSOA(MeasurmentDns):
                 help='Ensure the soa has this nxdomain')
 
     def check(self, args, message):
-        MeasurmentDns.check(self, args, message)
-        for answer in self.answers:
-            if answer.type == 'RRSIG':
-                continue
-            elif answer.type != 'SOA':
-                message.add_error(self.probe_id, self.msg % (
-                    'RRTYPE', self.answer.type))
-            else:
-                if args.mname:
-                    self.check_string( args.mname, answer.mname, 'mname', message)
-                if args.rname:
-                    self.check_string( args.rname, answer.rname, 'rname', message)
-                if args.serial:
-                    print answer.serial
-                    self.check_string( args.serial, answer.serial, 'serial', message)
-                if args.refresh:
-                    self.check_string( args.refresh, answer.refresh, 'refresh', message)
-                if args.expire:
-                    self.check_string( args.expire, answer.expire, 'expire', message)
-                if args.nxdomain:
-                    self.check_string( args.nxdomain, answer.nxdomain, 'nxdomain', message)
+        if not self.parse_error:
+            MeasurmentDns.check(self, args, message)
+            for answer in self.answers:
+                if answer.type == 'RRSIG':
+                    continue
+                elif answer.type != 'SOA':
+                    message.add_error(self.probe_id, self.msg % (
+                        'RRTYPE', answer.type))
+                else:
+                    if args.mname:
+                        self.check_string( args.mname, answer.mname, 'mname', message)
+                    if args.rname:
+                        self.check_string( args.rname, answer.rname, 'rname', message)
+                    if args.serial:
+                        self.check_string( args.serial, answer.serial, 'serial', message)
+                    if args.refresh:
+                        self.check_string( args.refresh, answer.refresh, 'refresh', message)
+                    if args.expire:
+                        self.check_string( args.expire, answer.expire, 'expire', message)
+                    if args.nxdomain:
+                        self.check_string( args.nxdomain, answer.nxdomain, 'nxdomain', message)
 
 

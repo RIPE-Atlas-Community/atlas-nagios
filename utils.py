@@ -80,6 +80,8 @@ def parse_measurements(measurements, measurement_type, message):
                 'aaaa': MeasurmentDnsAAAA,
                 'ds': MeasurmentDnsDS,
                 'dnskey' : MeasurmentDnsDNSKEY,
+                'mx' : MeasurmentDnsMX,
+                'ns' : MeasurmentDnsNS,
                 'soa': MeasurmentDnsSOA,
                 'http': MeasurmentHTTP,
                 'ping': MeasurmentPing,
