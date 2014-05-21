@@ -235,18 +235,18 @@ class MeasurmentDns(Measurment):
         self.parsed = DnsResult(payload)
         Measurment.__init__(self, probe_id, payload)
         if 'error' not in self.parsed.responses[0].raw_data:
-            self.questions = self.parsed.responses[0].questions
-            self.answers = self.parsed.responses[0].answers
-            self.authorities = self.parsed.responses[0].authorities
-            self.additionals = self.parsed.responses[0].additionals
-            self.rcode = self.parsed.responses[0].header.return_code
-            self.aa = self.parsed.responses[0].header.aa
-            self.rd = self.parsed.responses[0].header.rd
-            self.ra = self.parsed.responses[0].header.ra
-            self.ad = self.parsed.responses[0].header.ad
-            self.cd = self.parsed.responses[0].header.cd
-            if self.parsed.responses[0].edns0:
-                for opt in self.parsed.responses[0].edns0.options:
+            self.questions = self.parsed.responses[0].abuf.questions
+            self.answers = self.parsed.responses[0].abuf.answers
+            self.authorities = self.parsed.responses[0].abuf.authorities
+            self.additionals = self.parsed.responses[0].abuf.additionals
+            self.rcode = self.parsed.responses[0].abuf.header.return_code
+            self.aa = self.parsed.responses[0].abuf.header.aa
+            self.rd = self.parsed.responses[0].abuf.header.rd
+            self.ra = self.parsed.responses[0].abuf.header.ra
+            self.ad = self.parsed.responses[0].abuf.header.ad
+            self.cd = self.parsed.responses[0].abuf.header.cd
+            if self.parsed.responses[0].abuf.edns0:
+                for opt in self.parsed.responses[0].abuf.edns0.options:
                     if opt.nsid:
                         self.nsid = opt.nsid 
         else:
@@ -326,7 +326,7 @@ class MeasurmentDnsA(MeasurmentDns):
                     message.add_error(self.probe_id, self.msg % (
                         'RRTYPE', answer.type))
                 elif args.answer:
-                    self.check_string( args.answer, answer.answer, 'answer', message)
+                    self.check_string( args.answer, answer.address, 'address', message)
 
 class MeasurmentDnsAAAA(MeasurmentDns):
     '''class for a dns AAAA measuerment'''
@@ -354,7 +354,7 @@ class MeasurmentDnsAAAA(MeasurmentDns):
                     message.add_error(self.probe_id, self.msg % (
                         'RRTYPE', answer.type))
                 elif args.answer:
-                    self.check_string( args.answer, answer.answer, 'answer', message)
+                    self.check_string( args.answer, answer.address, 'address', message)
 
 class MeasurmentDnsNS(MeasurmentDns):
     '''class for a dns NS measuerment'''
@@ -382,7 +382,7 @@ class MeasurmentDnsNS(MeasurmentDns):
                     message.add_error(self.probe_id, self.msg % (
                         'RRTYPE', answer.type))
                 elif args.answer:
-                    self.check_string( args.answer, answer.answer, 'answer', message)
+                    self.check_string( args.answer, answer.target, 'target', message)
 
 class MeasurmentDnsMX(MeasurmentDns):
     '''class for a dns MX measuerment'''
@@ -414,12 +414,13 @@ class MeasurmentDnsMX(MeasurmentDns):
                         'RRTYPE', answer.type))
                 else:
                     if args.pref:
-                        if int(args.pref) == int(answer.pref):
+                        if int(args.pref) == int(answer.preference):
                             pref_found = True
                         else:
                             continue
                     if args.exchange:
-                        self.check_string( args.exchange, answer.exchange, 'exchange', message)
+                        self.check_string( args.exchange, answer.mail_exchanger, 
+                                'exchange', message)
             if args.pref and not pref_found:
                 message.add_error(self.probe_id, 'Pref ({}) not found'.format(args.pref))
 
@@ -460,12 +461,12 @@ class MeasurmentDnsDS(MeasurmentDns):
                         'RRTYPE', answer.type))
                 else:
                     if args.keytag:
-                        if int(args.keytag) == (answer.key_tag):
+                        if int(args.keytag) == (answer.tag):
                             keytag_found = True
                         else:
                             continue
                     if args.algorithm:
-                        if int(args.algorithm) == int(answer.algo):
+                        if int(args.algorithm) == int(answer.algorithm):
                             algorithm_found = True
                         else:
                             continue
@@ -475,13 +476,14 @@ class MeasurmentDnsDS(MeasurmentDns):
                         else:
                             continue
                     if args.digest:
-                        self.check_string( args.digest, answer.digest, 'digest', message)
+                        self.check_string( args.digest, answer.delegation_key, 
+                                'digest', message)
             if args.keytag and not keytag_found:
-                message.add_error(self.probe_id, 'Keytag ({}) not found'.format(args.keytag))
+                message.add_error(self.probe_id, 'Keytag ({}) not found'.format(args.tag))
             if args.algorithm and not algorithm_found:
                 message.add_error(self.probe_id, 'Algorithem ({}) not found'.format(args.algorithm))
             if args.digest_type and not digest_type_found:
-                message.add_error(self.probe_id, 'Digest Type ({}) not found'.format(args.digest_type))
+                message.add_error(self.probe_id, 'Digest Type ({}) not found'.format(args.delegation_key))
 
 class MeasurmentDnsDNSKEY(MeasurmentDns):
     '''class for a dns DNSKEY measurement'''
@@ -511,13 +513,16 @@ class MeasurmentDnsDNSKEY(MeasurmentDns):
                 else:
                     if args.dnskey:
                         dnskey = ''.join(args.dnskey.split())
-                        self.check_string( dnskey, answer.data, 'dnskey', message)
-                    if args.flags:
-                        self.check_string( args.dnskey_flags, answer.flags, 'dnskey flags', message)
+                        self.check_string( dnskey, answer.key, 'dnskey', message)
+                    if args.dnskey_flags:
+                        self.check_string( args.dnskey_flags, answer.flags, 
+                                'dnskey flags', message)
                     if args.proto:
-                        self.check_string( args.proto, answer.proto, 'dnskey proto', message)
+                        self.check_string( args.proto, answer.protocol, 
+                                'dnskey proto', message)
                     if args.algo:
-                        self.check_string( args.algo, answer.algo, 'dnskey algo', message)
+                        self.check_string( args.algo, answer.algorithm, 
+                                'dnskey algo', message)
 
 class MeasurmentDnsSOA(MeasurmentDns):
     '''class for a dns SOA measuerment'''
