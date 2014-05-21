@@ -88,7 +88,6 @@ def parse_measurements(measurements, measurement_type, message):
                 'ssl': MeasurmentSSL,
             }.get(measurement_type.lower(), Measurment)(probe_id, measurement[0])
         )
-        #parsed_measurements.append(MeasurmentSSL(probe_id, measurement[5]))
     return parsed_measurements
 
 

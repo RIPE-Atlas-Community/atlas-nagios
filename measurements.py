@@ -38,6 +38,7 @@ class Measurment:
         self.probe_id = probe_id
         self.payload = payload
 
+
     @staticmethod
     def add_args(parser):
         '''add arguments'''
@@ -226,7 +227,7 @@ class MeasurmentDns(Measurment):
     answers = []
     authorities = []
     additionals = []
-    parse_error = False
+    parse_error = None
     nsid = None
 
     def __init__(self, probe_id, payload):
@@ -250,7 +251,7 @@ class MeasurmentDns(Measurment):
                     if opt.nsid:
                         self.nsid = opt.nsid 
         else:
-            self.parse_error = True
+            self.parse_error = self.parsed.responses[0].raw_data['error']
 
     @staticmethod
     def add_args(parser):
@@ -296,8 +297,8 @@ class MeasurmentDns(Measurment):
             if args.cd and not self.cd:
                 message.add_error(self.probe_id, 'CD Flag not set')
         else:
-            message.add_error(self.probe_id, self.probe_id % (
-                    'GENRAL',self.parsed.raw_data))
+            message.add_error(self.probe_id, self.msg % (
+                    'GENRAL',self.parse_error))
 
 
 class MeasurmentDnsA(MeasurmentDns):
@@ -373,8 +374,8 @@ class MeasurmentDnsNS(MeasurmentDns):
                         contains a this string can also check if we get a cname')
 
     def check(self, args, message):
+        MeasurmentDns.check(self, args, message)
         if not self.parse_error:
-            MeasurmentDns.check(self, args, message)
             for answer in self.answers:
                 if answer.type == 'RRSIG':
                     continue
@@ -403,8 +404,8 @@ class MeasurmentDnsMX(MeasurmentDns):
                 help='Only check this exhange with this pref, error if we dont see this')
 
     def check(self, args, message):
+        MeasurmentDns.check(self, args, message)
         if not self.parse_error:
-            MeasurmentDns.check(self, args, message)
             pref_found = False
             for answer in self.answers:
                 if answer.type == 'RRSIG':
@@ -448,8 +449,8 @@ class MeasurmentDnsDS(MeasurmentDns):
                 help='Ensure we see this digest')
 
     def check(self, args, message):
+        MeasurmentDns.check(self, args, message)
         if not self.parse_error:
-            MeasurmentDns.check(self, args, message)
             keytag_found = False
             algorithm_found = False
             digest_type_found = False
@@ -502,8 +503,8 @@ class MeasurmentDnsDNSKEY(MeasurmentDns):
         parser.add_argument('--algo', help='int represting the algorithem')
 
     def check(self, args, message):
+        MeasurmentDns.check(self, args, message)
         if not self.parse_error:
-            MeasurmentDns.check(self, args, message)
             for answer in self.answers:
                 if answer.type == 'RRSIG':
                     continue
@@ -550,8 +551,8 @@ class MeasurmentDnsSOA(MeasurmentDns):
                 help='Ensure the soa has this nxdomain')
 
     def check(self, args, message):
+        MeasurmentDns.check(self, args, message)
         if not self.parse_error:
-            MeasurmentDns.check(self, args, message)
             for answer in self.answers:
                 if answer.type == 'RRSIG':
                     continue
