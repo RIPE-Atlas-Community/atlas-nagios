@@ -34,6 +34,8 @@ class Measurment:
     '''Parent object for an atlas measurment'''
     parsed = None
     probe_id = None
+    parse_error = False
+
     def __init__(self, probe_id, payload):
         '''Initiate generic message data'''
         self.probe_id = probe_id
@@ -252,7 +254,6 @@ class MeasurmentDns(Measurment):
     answers = []
     authorities = []
     additionals = []
-    parse_error = None
     nsid = None
 
     def __init__(self, probe_id, payload):

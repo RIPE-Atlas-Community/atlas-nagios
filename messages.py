@@ -122,7 +122,8 @@ class ProbeMessage:
 
     def exit(self, args):
         """Parse the message and exit correctly for nagios"""
-        if len(self.error) > args.crit_probes:
+        if len(self.error) >= args.crit_probes:
+            len(self.error)
             if self.verbose > 0:
                 print "ERROR: %d: %s" % (len(self.error), self.str_message(self.error))
                 if self.verbose > 1:
@@ -132,7 +133,17 @@ class ProbeMessage:
             else:
                 print "ERROR: %d" % len(self.error)
             sys.exit(2)
-        elif len(self.warn) > args.warn_probes:
+        elif len(self.error) >= args.warn_probes:
+            if self.verbose > 0:
+                print "ERROR: %d: %s" % (len(self.error), self.str_message(self.error))
+                if self.verbose > 1:
+                    print "WARN: %d: %s" % (len(self.warn), self.str_message(self.warn))
+                    print "OK: %d: %s" % (len(self.ok), self.str_message(self.ok))
+
+            else:
+                print "ERROR: %d" % len(self.error)
+            sys.exit(1)
+        elif len(self.warn) >= args.warn_probes:
             if self.verbose > 0:
                 print "WARN: %d: %s" % (len(self.warn), self.str_message(self.warn))
                 if self.verbose > 1:
