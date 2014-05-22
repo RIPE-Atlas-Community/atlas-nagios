@@ -27,7 +27,7 @@ import argparse
 import requests
 import json
 import pprint
-from ripe.atlas.sagan import PingResult, SslResult, HttpResult, DnsResult
+from ripe.atlas.sagan import Result, PingResult, SslResult, HttpResult, DnsResult
 
 class Measurment:
     '''Parent object for an atlas measurment'''
@@ -91,7 +91,7 @@ class MeasurmentSSL(Measurment):
     def __init__(self, probe_id, payload):
         '''Initiate object'''
         #super(Measurment, self).__init__(payload)
-        self.parsed = SslResult(payload)
+        self.parsed = SslResult(payload, on_error=Result.ERROR_IGNORE)
         Measurment.__init__(self, probe_id, payload)
         self.common_name = self.parsed.certificates[0].subject_cn
         self.expire = self.parsed.certificates[0].valid_until
@@ -143,7 +143,7 @@ class MeasurmentPing(Measurment):
     def __init__(self, probe_id, payload):
         '''Initiate object'''
         #super(Measurment, self).__init__(self, payload)
-        self.parsed = PingResult(payload)
+        self.parsed = PingResult(payload, on_error=Result.ERROR_IGNORE)
         Measurment.__init__(self, probe_id, payload)
 
     @staticmethod
@@ -186,7 +186,7 @@ class MeasurmentHTTP(Measurment):
     def __init__(self, probe_id, payload):
         '''Initiate object'''
         #super(Measurment, self).__init__(self, payload)
-        self.parsed = HttpResult(payload)
+        self.parsed = HttpResult(payload, on_error=Result.ERROR_IGNORE)
         Measurment.__init__(self, probe_id, payload)
         self.status = self.parsed.responses[0].code
 
@@ -233,7 +233,7 @@ class MeasurmentDns(Measurment):
     def __init__(self, probe_id, payload):
         '''Initiate Object'''
         #super(Measurment, self).__init__(self, payload)
-        self.parsed = DnsResult(payload)
+        self.parsed = DnsResult(payload, on_error=Result.ERROR_IGNORE)
         Measurment.__init__(self, probe_id, payload)
         if 'error' not in self.parsed.responses[0].raw_data:
             self.questions = self.parsed.responses[0].abuf.questions
