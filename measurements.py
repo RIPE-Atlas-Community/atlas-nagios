@@ -35,6 +35,7 @@ class Measurment:
     parsed = None
     probe_id = None
     parse_error = False
+    msg = "%s (%s)"
 
     def __init__(self, probe_id, payload):
         '''Initiate generic message data'''
@@ -248,7 +249,6 @@ class MeasurmentHTTP(Measurment):
 
 class MeasurmentDns(Measurment):
     '''Parent class for a dns measuerment'''
-    msg = "%s (%s)"
     rcode = None
     questions = []
     answers = []
