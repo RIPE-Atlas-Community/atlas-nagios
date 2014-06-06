@@ -27,17 +27,27 @@ import argparse
 import requests
 import json
 import pprint
+<<<<<<< HEAD
 from ripe.atlas.sagan import Result 
+=======
+from ripe.atlas.sagan import Result, PingResult, SslResult, HttpResult, DnsResult
+from ripe.atlas.sagan.base import ResultParseError
+>>>>>>> 450a61c6e5f727c379b66e5e80e3ceb751cc2d9a
 
 class Measurment:
     '''Parent object for an atlas measurment'''
     parsed = None
     probe_id = None
+    parse_error = False
+
     def __init__(self, probe_id, payload):
         '''Initiate generic message data'''
         self.probe_id = probe_id
         self.payload = payload
-        self.parsed = Result(payload, on_error=Result.ERROR_IGNORE)
+        try:
+            self.parsed = Result(payload, on_error=Result.ERROR_IGNORE)
+        except ResultParseError as e:
+            self.parse_error = e
 
 
     @staticmethod
@@ -93,9 +103,10 @@ class MeasurmentSSL(Measurment):
         '''Initiate object'''
         #super(Measurment, self).__init__(payload)
         Measurment.__init__(self, probe_id, payload)
-        self.common_name = self.parsed.certificates[0].subject_cn
-        self.expire = self.parsed.certificates[0].valid_until
-        self.sha1 = self.parsed.certificates[0].checksum_sha1
+        if not self.parse_error:
+            self.common_name = self.parsed.certificates[0].subject_cn
+            self.expire = self.parsed.certificates[0].valid_until
+            self.sha1 = self.parsed.certificates[0].checksum_sha1
 
     @staticmethod
     def add_args(subparser):
@@ -126,15 +137,19 @@ class MeasurmentSSL(Measurment):
 
     def check(self, args, message):
         '''Main SSL check routine'''
-        Measurment.check(self, args, message)
-        if args.sha1hash:
-            self.check_string( args.sha1hash,
-                    self.sha1, 'sha1hash', message)
-        if args.common_name:
-            self.check_string( args.common_name,
-                    self.common_name, 'cn', message)
-        if args.ssl_expire_days:
-            self.check_expiry(args.ssl_expire_days, message)
+        if self.parse_error:
+            message.add_error(self.probe_id, self.msg % (
+                    'GENRAL',self.parse_error))
+        else:
+            Measurment.check(self, args, message)
+            if args.sha1hash:
+                self.check_string( args.sha1hash,
+                        self.sha1, 'sha1hash', message)
+            if args.common_name:
+                self.check_string( args.common_name,
+                        self.common_name, 'cn', message)
+            if args.ssl_expire_days:
+                self.check_expiry(args.ssl_expire_days, message)
 
 
 class MeasurmentPing(Measurment):
@@ -169,14 +184,18 @@ class MeasurmentPing(Measurment):
 
     def check(self, args, message):
         '''Main ping check routine'''
-        Measurment.check(self, args, message)
+        if self.parse_error:
+            message.add_error(self.probe_id, self.msg % (
+                    'GENRAL',self.parse_error))
+        else:
+            Measurment.check(self, args, message)
 
-        if args.rtt_min:
-            self.check_rtt("min", args.rtt_min, message)
-        if args.rtt_max:
-            self.check_rtt("max", args.rtt_max, message)
-        if args.rtt_avg:
-            self.check_rtt("avg", args.rtt_avg, message)
+            if args.rtt_min:
+                self.check_rtt("min", args.rtt_min, message)
+            if args.rtt_max:
+                self.check_rtt("max", args.rtt_max, message)
+            if args.rtt_avg:
+                self.check_rtt("avg", args.rtt_avg, message)
 
 
 class MeasurmentHTTP(Measurment):
@@ -186,7 +205,8 @@ class MeasurmentHTTP(Measurment):
         '''Initiate object'''
         #super(Measurment, self).__init__(self, payload)
         Measurment.__init__(self, probe_id, payload)
-        self.status = self.parsed.responses[0].code
+        if not self.parse_error:
+            self.status = self.parsed.responses[0].code
 
     @staticmethod
     def add_args(subparser):
@@ -213,9 +233,13 @@ class MeasurmentHTTP(Measurment):
 
     def check(self, args, message):
         '''Main HTTP check routine'''
-        Measurment.check(self, args, message)
-        if args.status_code:
-            self.check_status(args.status_code, message)
+        if self.parse_error:
+            message.add_error(self.probe_id, self.msg % (
+                    'GENRAL',self.parse_error))
+        else:
+            Measurment.check(self, args, message)
+            if args.status_code:
+                self.check_status(args.status_code, message)
 
 class MeasurmentDns(Measurment):
     '''Parent class for a dns measuerment'''
@@ -225,14 +249,13 @@ class MeasurmentDns(Measurment):
     answers = []
     authorities = []
     additionals = []
-    parse_error = None
     nsid = None
 
     def __init__(self, probe_id, payload):
         '''Initiate Object'''
         #super(Measurment, self).__init__(self, payload)
         Measurment.__init__(self, probe_id, payload)
-        if 'error' not in self.parsed.responses[0].raw_data:
+        if not self.parse_error:
             self.questions = self.parsed.responses[0].abuf.questions
             self.answers = self.parsed.responses[0].abuf.answers
             self.authorities = self.parsed.responses[0].abuf.authorities
@@ -247,8 +270,6 @@ class MeasurmentDns(Measurment):
                 for opt in self.parsed.responses[0].abuf.edns0.options:
                     if opt.nsid:
                         self.nsid = opt.nsid 
-        else:
-            self.parse_error = self.parsed.responses[0].raw_data['error']
 
     @staticmethod
     def add_args(parser):
@@ -276,7 +297,10 @@ class MeasurmentDns(Measurment):
         '''Main Check routine'''
         self.check_rcode(args.rcode, message)
         Measurment.check(self, args, message)
-        if not self.parse_error:
+        if self.parse_error:
+            message.add_error(self.probe_id, self.msg % (
+                    'GENRAL',self.parse_error))
+        else:
             if args.nsid:
                 if not self.nsid:
                     message.add_error(self.probe_id, 'no nsid recived')
@@ -293,9 +317,6 @@ class MeasurmentDns(Measurment):
                 message.add_error(self.probe_id, 'AD Flag not set')
             if args.cd and not self.cd:
                 message.add_error(self.probe_id, 'CD Flag not set')
-        else:
-            message.add_error(self.probe_id, self.msg % (
-                    'GENRAL',self.parse_error))
 
 
 class MeasurmentDnsA(MeasurmentDns):
@@ -343,8 +364,8 @@ class MeasurmentDnsAAAA(MeasurmentDns):
                         contains a CNAME record with this string')
 
     def check(self, args, message):
-        MeasurmentDns.check(self, args, message)
         if not self.parse_error:
+            MeasurmentDns.check(self, args, message)
             for answer in self.answers:
                 if answer.type == 'RRSIG':
                     continue
@@ -413,8 +434,8 @@ class MeasurmentDnsNS(MeasurmentDns):
                         contains a this string can also check if we get a cname')
 
     def check(self, args, message):
-        MeasurmentDns.check(self, args, message)
         if not self.parse_error:
+            MeasurmentDns.check(self, args, message)
             for answer in self.answers:
                 if answer.type == 'RRSIG':
                     continue
@@ -443,8 +464,8 @@ class MeasurmentDnsMX(MeasurmentDns):
                 help='Only check this exhange with this pref, error if we dont see this')
 
     def check(self, args, message):
-        MeasurmentDns.check(self, args, message)
         if not self.parse_error:
+            MeasurmentDns.check(self, args, message)
             pref_found = False
             for answer in self.answers:
                 if answer.type == 'RRSIG':
@@ -488,8 +509,8 @@ class MeasurmentDnsDS(MeasurmentDns):
                 help='Ensure we see this digest')
 
     def check(self, args, message):
-        MeasurmentDns.check(self, args, message)
         if not self.parse_error:
+            MeasurmentDns.check(self, args, message)
             keytag_found = False
             algorithm_found = False
             digest_type_found = False
@@ -542,8 +563,8 @@ class MeasurmentDnsDNSKEY(MeasurmentDns):
         parser.add_argument('--algo', help='int represting the algorithem')
 
     def check(self, args, message):
-        MeasurmentDns.check(self, args, message)
         if not self.parse_error:
+            MeasurmentDns.check(self, args, message)
             for answer in self.answers:
                 if answer.type == 'RRSIG':
                     continue
@@ -590,8 +611,8 @@ class MeasurmentDnsSOA(MeasurmentDns):
                 help='Ensure the soa has this nxdomain')
 
     def check(self, args, message):
-        MeasurmentDns.check(self, args, message)
         if not self.parse_error:
+            MeasurmentDns.check(self, args, message)
             for answer in self.answers:
                 if answer.type == 'RRSIG':
                     continue
