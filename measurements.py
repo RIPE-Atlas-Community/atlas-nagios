@@ -27,7 +27,7 @@ import argparse
 import requests
 import json
 import pprint
-from ripe.atlas.sagan import Result, PingResult, SslResult, HttpResult, DnsResult
+from ripe.atlas.sagan import Result 
 
 class Measurment:
     '''Parent object for an atlas measurment'''
@@ -37,6 +37,7 @@ class Measurment:
         '''Initiate generic message data'''
         self.probe_id = probe_id
         self.payload = payload
+        self.parsed = Result(payload, on_error=Result.ERROR_IGNORE)
 
 
     @staticmethod
@@ -91,7 +92,6 @@ class MeasurmentSSL(Measurment):
     def __init__(self, probe_id, payload):
         '''Initiate object'''
         #super(Measurment, self).__init__(payload)
-        self.parsed = SslResult(payload, on_error=Result.ERROR_IGNORE)
         Measurment.__init__(self, probe_id, payload)
         self.common_name = self.parsed.certificates[0].subject_cn
         self.expire = self.parsed.certificates[0].valid_until
@@ -143,7 +143,6 @@ class MeasurmentPing(Measurment):
     def __init__(self, probe_id, payload):
         '''Initiate object'''
         #super(Measurment, self).__init__(self, payload)
-        self.parsed = PingResult(payload, on_error=Result.ERROR_IGNORE)
         Measurment.__init__(self, probe_id, payload)
 
     @staticmethod
@@ -186,7 +185,6 @@ class MeasurmentHTTP(Measurment):
     def __init__(self, probe_id, payload):
         '''Initiate object'''
         #super(Measurment, self).__init__(self, payload)
-        self.parsed = HttpResult(payload, on_error=Result.ERROR_IGNORE)
         Measurment.__init__(self, probe_id, payload)
         self.status = self.parsed.responses[0].code
 
@@ -233,7 +231,6 @@ class MeasurmentDns(Measurment):
     def __init__(self, probe_id, payload):
         '''Initiate Object'''
         #super(Measurment, self).__init__(self, payload)
-        self.parsed = DnsResult(payload, on_error=Result.ERROR_IGNORE)
         Measurment.__init__(self, probe_id, payload)
         if 'error' not in self.parsed.responses[0].raw_data:
             self.questions = self.parsed.responses[0].abuf.questions
@@ -356,6 +353,48 @@ class MeasurmentDnsAAAA(MeasurmentDns):
                         'RRTYPE', answer.type))
                 elif args.answer:
                     self.check_string( args.answer, answer.address, 'address', message)
+
+class MeasurmentDnsCH(MeasurmentDns):
+    '''class for a dns AAAA measuerment'''
+
+    def __init__(self, probe_id, payload):
+        '''Initiate Object'''
+        #super(Measurment, self).__init__(self, payload)
+        MeasurmentDns.__init__(self, probe_id, payload)
+
+    @staticmethod
+    def add_args(subparser):
+        parser = subparser.add_parser('CH', help='CH DNS check')
+        MeasurmentDns.add_args(parser)
+        parser.add_argument('--hostname-bind',
+                help='Ensure the RR set from the answer \
+                        contains a CNAME record with this string')
+        parser.add_argument('--version-bind',
+                help='Ensure the RR set from the answer \
+                        contains a CNAME record with this string')
+        parser.add_argument('--id-server',
+                help='Ensure the RR set from the answer \
+                        contains a CNAME record with this string')
+
+    def check(self, args, message):
+        MeasurmentDns.check(self, args, message)
+        if not self.parse_error:
+            for answer in self.answers:
+                if answer.type == 'RRSIG':
+                    continue
+                elif answer.type != 'TXT':
+                    message.add_error(self.probe_id, self.msg % (
+                        'RRTYPE', answer.type))
+                else:
+                    if args.hostname_bind:
+                        self.check_string( args.answer, answer.hostname_bind, 
+                                'hostname.bind', message)
+                    if args.version_bind:
+                        self.check_string( args.answer, answer.version_bind, 
+                                'version.bind', message)
+                    if args.id_server:
+                        self.check_string( args.answer, answer.id_server, 
+                                'id.server', message)
 
 class MeasurmentDnsNS(MeasurmentDns):
     '''class for a dns NS measuerment'''
