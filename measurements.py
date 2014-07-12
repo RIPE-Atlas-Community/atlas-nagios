@@ -27,12 +27,7 @@ import argparse
 import requests
 import json
 import pprint
-<<<<<<< HEAD
 from ripe.atlas.sagan import Result 
-=======
-from ripe.atlas.sagan import Result, PingResult, SslResult, HttpResult, DnsResult
-from ripe.atlas.sagan.base import ResultParseError
->>>>>>> 450a61c6e5f727c379b66e5e80e3ceb751cc2d9a
 
 class Measurment:
     '''Parent object for an atlas measurment'''
@@ -45,7 +40,7 @@ class Measurment:
         self.probe_id = probe_id
         self.payload = payload
         try:
-            self.parsed = Result(payload, on_error=Result.ERROR_IGNORE)
+            self.parsed = Result(payload, on_error=Result.ACTION_IGNORE)
         except ResultParseError as e:
             self.parse_error = e
 
