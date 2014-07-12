@@ -132,6 +132,8 @@ class ProbeMessage:
 
             else:
                 print "ERROR: %d" % len(self.error)
+                print "WARN: %d" % len(self.warn)
+                print "OK: %d" % len(self.ok)
             sys.exit(2)
         elif len(self.error) >= args.warn_probes:
             if self.verbose > 0:
@@ -142,19 +144,28 @@ class ProbeMessage:
 
             else:
                 print "ERROR: %d" % len(self.error)
+                print "WARN: %d" % len(self.warn)
+                print "OK: %d" % len(self.ok)
             sys.exit(1)
         elif len(self.warn) >= args.warn_probes:
             if self.verbose > 0:
                 print "WARN: %d: %s" % (len(self.warn), self.str_message(self.warn))
+                print "ERROR: %d: %s" % (len(self.error), self.str_message(self.error))
                 if self.verbose > 1:
                     print "OK: %d: %s" % (len(self.ok), self.str_message(self.ok))
             else:
                 print "WARN: %d" % len(self.warn)
+                print "OK: %d" % len(self.ok)
+                print "ERROR: %d" % len(self.error)
             sys.exit(1)
         else:
             if self.verbose > 1:
                 print "OK: %d: %s" % (len(self.ok), self.str_message(self.ok))
+                print "WARN: %d: %s" % (len(self.warn), self.str_message(self.warn))
+                print "ERROR: %d: %s" % (len(self.error), self.str_message(self.error))
             else:
                 print "OK: %d" % len(self.ok)
+                print "WARN: %d" % len(self.warn)
+                print "ERROR: %d" % len(self.error)
             sys.exit(0)
 
