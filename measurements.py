@@ -27,20 +27,22 @@ import argparse
 import requests
 import json
 import pprint
-from ripe.atlas.sagan import Result 
+from ripe.atlas.sagan import Result, ResultParseError
 
 class Measurment:
     '''Parent object for an atlas measurment'''
     parsed = None
     probe_id = None
     parse_error = False
+    msg = "%s (%s)"
 
     def __init__(self, probe_id, payload):
         '''Initiate generic message data'''
         self.probe_id = probe_id
         self.payload = payload
         try:
-            self.parsed = Result(payload, on_error=Result.ACTION_IGNORE)
+            self.parsed = Result(payload).get(payload, on_error=Result.ACTION_IGNORE)
+            #self.parsed = self.parsed.get(payload)
         except ResultParseError as e:
             self.parse_error = e
 
@@ -119,11 +121,11 @@ class MeasurmentSSL(Measurment):
         '''Check if the certificat is going to expire before warn_expiry'''
         current_time = time.time()
         warn_time = current_time + (warn_expiry * 60 * 60 * 24)
-        if self.expire.strftime("%s") < current_time:
+        if float(self.expire.strftime("%s")) < current_time:
             message.add_error(self.probe_id, self.msg % (
                     "certificate expierd", self.expire))
             return
-        elif self.expire.strftime("%s") < warn_time:
+        elif float(self.expire.strftime("%s")) < warn_time:
             message.add_warn(self.probe_id, self.msg % (
                     "certificate expires soon", self.expire))
         else:
@@ -238,7 +240,6 @@ class MeasurmentHTTP(Measurment):
 
 class MeasurmentDns(Measurment):
     '''Parent class for a dns measuerment'''
-    msg = "%s (%s)"
     rcode = None
     questions = []
     answers = []
@@ -250,7 +251,7 @@ class MeasurmentDns(Measurment):
         '''Initiate Object'''
         #super(Measurment, self).__init__(self, payload)
         Measurment.__init__(self, probe_id, payload)
-        if not self.parse_error:
+        if not self.parse_error and len(self.parsed.responses) > 0:
             self.questions = self.parsed.responses[0].abuf.questions
             self.answers = self.parsed.responses[0].abuf.answers
             self.authorities = self.parsed.responses[0].abuf.authorities
