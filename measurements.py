@@ -101,9 +101,10 @@ class MeasurmentSSL(Measurment):
         #super(Measurment, self).__init__(payload)
         Measurment.__init__(self, probe_id, payload)
         if not self.parse_error:
-            self.common_name = self.parsed.certificates[0].subject_cn
-            self.expire = self.parsed.certificates[0].valid_until
-            self.sha1 = self.parsed.certificates[0].checksum_sha1
+            if not self.parsed.is_error:
+                self.common_name = self.parsed.certificates[0].subject_cn
+                self.expire = self.parsed.certificates[0].valid_until
+                self.sha1 = self.parsed.certificates[0].checksum_sha1
 
     @staticmethod
     def add_args(subparser):
@@ -137,6 +138,9 @@ class MeasurmentSSL(Measurment):
         if self.parse_error:
             message.add_error(self.probe_id, self.msg % (
                     'GENRAL',self.parse_error))
+        elif self.parsed.is_error:
+            message.add_error(self.probe_id, self.msg % (
+                    'GENRAL', self.parsed.error_message))
         else:
             Measurment.check(self, args, message)
             if args.sha1hash:
@@ -184,6 +188,9 @@ class MeasurmentPing(Measurment):
         if self.parse_error:
             message.add_error(self.probe_id, self.msg % (
                     'GENRAL',self.parse_error))
+        elif self.parsed.is_error:
+            message.add_error(self.probe_id, self.msg % (
+                    'GENRAL', self.parsed.error_message))
         else:
             Measurment.check(self, args, message)
 
@@ -203,7 +210,8 @@ class MeasurmentHTTP(Measurment):
         #super(Measurment, self).__init__(self, payload)
         Measurment.__init__(self, probe_id, payload)
         if not self.parse_error:
-            self.status = self.parsed.responses[0].code
+            if not self.parsed.is_error:
+                self.status = self.parsed.responses[0].code
 
     @staticmethod
     def add_args(subparser):
@@ -236,6 +244,9 @@ class MeasurmentHTTP(Measurment):
         if self.parse_error:
             message.add_error(self.probe_id, self.msg % (
                     'GENRAL',self.parse_error))
+        elif self.parsed.is_error:
+            message.add_error(self.probe_id, self.msg % (
+                    'GENRAL', self.parsed.error_message))
         else:
             Measurment.check(self, args, message)
             if args.status_code:
@@ -255,20 +266,21 @@ class MeasurmentDns(Measurment):
         #super(Measurment, self).__init__(self, payload)
         Measurment.__init__(self, probe_id, payload)
         if not self.parse_error and len(self.parsed.responses) > 0:
-            self.questions = self.parsed.responses[0].abuf.questions
-            self.answers = self.parsed.responses[0].abuf.answers
-            self.authorities = self.parsed.responses[0].abuf.authorities
-            self.additionals = self.parsed.responses[0].abuf.additionals
-            self.rcode = self.parsed.responses[0].abuf.header.return_code
-            self.aa = self.parsed.responses[0].abuf.header.aa
-            self.rd = self.parsed.responses[0].abuf.header.rd
-            self.ra = self.parsed.responses[0].abuf.header.ra
-            self.ad = self.parsed.responses[0].abuf.header.ad
-            self.cd = self.parsed.responses[0].abuf.header.cd
-            if self.parsed.responses[0].abuf.edns0:
-                for opt in self.parsed.responses[0].abuf.edns0.options:
-                    if opt.nsid:
-                        self.nsid = opt.nsid 
+            if not self.parsed.is_error:
+                self.questions = self.parsed.responses[0].abuf.questions
+                self.answers = self.parsed.responses[0].abuf.answers
+                self.authorities = self.parsed.responses[0].abuf.authorities
+                self.additionals = self.parsed.responses[0].abuf.additionals
+                self.rcode = self.parsed.responses[0].abuf.header.return_code
+                self.aa = self.parsed.responses[0].abuf.header.aa
+                self.rd = self.parsed.responses[0].abuf.header.rd
+                self.ra = self.parsed.responses[0].abuf.header.ra
+                self.ad = self.parsed.responses[0].abuf.header.ad
+                self.cd = self.parsed.responses[0].abuf.header.cd
+                if self.parsed.responses[0].abuf.edns0:
+                    for opt in self.parsed.responses[0].abuf.edns0.options:
+                        if opt.nsid:
+                            self.nsid = opt.nsid 
 
     @staticmethod
     def add_args(parser):
@@ -299,6 +311,9 @@ class MeasurmentDns(Measurment):
         if self.parse_error:
             message.add_error(self.probe_id, self.msg % (
                     'GENRAL',self.parse_error))
+        elif self.parsed.is_error:
+            message.add_error(self.probe_id, self.msg % (
+                    'GENRAL', self.parsed.error_message))
         else:
             if args.nsid:
                 if not self.nsid:
