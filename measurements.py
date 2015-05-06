@@ -224,6 +224,9 @@ class MeasurmentHTTP(Measurment):
             else:
                 message.add_error(self.probe_id, self.msg % (
                     msg, "HTTP Status Code"))
+        except TypeError: 
+            message.add_error(self.probe_id, self.msg % (
+                    msg, "HTTP Status Code"))
         except ValueError:
             message.add_error(self.probe_id, self.msg % (
                     msg, "HTTP Status Code"))
