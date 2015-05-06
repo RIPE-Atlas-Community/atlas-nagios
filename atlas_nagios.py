@@ -23,7 +23,7 @@
 #SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
-
+import logging
 from messages import ProbeMessage
 from measurements import *
 from utils import get_response,get_measurements,check_measurements, parse_measurements
@@ -54,6 +54,7 @@ def arg_parse():
 
 def main():
     """main function"""
+    logging.basicConfig(level=logging.ERROR)
     args = arg_parse()
     message = ProbeMessage(args.verbose)
     measurements =  get_measurements(args.measurement_id, args.key)
