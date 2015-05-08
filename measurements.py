@@ -52,6 +52,8 @@ class Measurment:
         '''add arguments'''
         parser.add_argument('-v', '--verbose', action='count',
                 help='Increase verbosity')
+        parser.add_argument('-p', '--perfdata', action='store_true',
+                help='Include performance data')
         parser.add_argument("measurement_id",
                 help="Measuerment ID to check")
         parser.add_argument('-w', '--warn-probes', type=int, default=2,

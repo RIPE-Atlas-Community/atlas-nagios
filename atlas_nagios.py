@@ -56,7 +56,7 @@ def main():
     """main function"""
     logging.basicConfig(level=logging.ERROR)
     args = arg_parse()
-    message = ProbeMessage(args.verbose)
+    message = ProbeMessage(args.verbose, args.perfdata)
     measurements =  get_measurements(args.measurement_id, args.key)
     parsed_measurements = parse_measurements(
             measurements, args.name, message)

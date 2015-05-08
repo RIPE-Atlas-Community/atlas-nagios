@@ -29,12 +29,12 @@ import json
 import pprint
 
 class Message:
-    """Object to store nagios messages"""
-    def __init__(self, verbose):
-        """
+    '''Object to store nagios messages'''
+    def __init__(self, verbose, perfdata=False):
+        '''
         Initialise Object
         verbose is an interger indicating how Much information to return
-        """
+        '''
         #need to group these by probe id
         self.error = []
         self.warn = []
@@ -42,22 +42,22 @@ class Message:
         self.verbose = verbose
 
     def add_error(self, message):
-        """Add an error message"""
+        '''Add an error message'''
         self.error.append(message)
 
     def add_warn(self, message):
-        """Add an warn message"""
+        '''Add an warn message'''
         self.warn.append(message)
 
     def add_ok(self, message):
-        """Add an ok message"""
+        '''Add an ok message'''
         self.ok.append(message)
 
     def str_message(self, probe_messages):
         return ', '.join(['%s=%s' % (key, value) for (key, value) in probe_messages.items()])
 
     def exit(self):
-        """Parse the message and exit correctly for nagios"""
+        '''Parse the message and exit correctly for nagios'''
         if len(self.error) > 0:
             if self.verbose > 0:
                 print "ERROR: %d: %s" % (len(self.error), self.str_message(self.error))
@@ -84,12 +84,12 @@ class Message:
             sys.exit(0)
 
 class ProbeMessage:
-    """Object to store nagios messages"""
-    def __init__(self, verbose):
-        """
+    '''Object to store nagios messages'''
+    def __init__(self, verbose, perfdata=False):
+        '''
         Initialise Object
         verbose is an interger indicating how Much information to return
-        """
+        '''
         #need to group these by probe id
         self.error = dict()
         self.warn = dict()
@@ -97,21 +97,21 @@ class ProbeMessage:
         self.verbose = verbose
 
     def add_error(self, probe, message):
-        """Add an error message"""
+        '''Add an error message'''
         try:
             self.error[probe].append(message)
         except KeyError:
             self.error[probe] = [message]
 
     def add_warn(self, probe, message):
-        """Add an warn message"""
+        '''Add an warn message'''
         try:
             self.warn[probe].append(message)
         except KeyError:
             self.warn[probe] = [message]
 
     def add_ok(self, probe, message):
-        """Add an ok message"""
+        '''Add an ok message'''
         try:
             self.ok[probe].append(message)
         except KeyError:
@@ -121,47 +121,61 @@ class ProbeMessage:
         return ', '.join(['%s=%s' % (key, value) for (key, value) in probe_messages.items()])
 
     def exit(self, args):
-        """Parse the message and exit correctly for nagios"""
+        '''Parse the message and exit correctly for nagios'''
+        msg = 'ERROR: {}, WARN: {}, OK: {}'.format(
+                len(self.error), len(self.warn), len(self.ok))
+        msg_extra          = ''
+        perfdata_msg       = ''
+        perfdata_extra_msg = ''
+        exit               = 3
+
+
         if len(self.error) >= args.crit_probes:
             len(self.error)
             if self.verbose > 0:
-                print "ERROR: %d: %s" % (len(self.error), self.str_message(self.error))
+                msg = 'ERROR: {}: {}'.format(
+                    len(self.error), self.str_message(self.error), perfdata)
                 if self.verbose > 1:
-                    print "WARN: %d: %s" % (len(self.warn), self.str_message(self.warn))
-                    print "OK: %d: %s" % (len(self.ok), self.str_message(self.ok))
-
-            else:
-                print 'ERROR: {}, WARN: {}, OK: {}'.format(
-                        len(self.error), len(self.warn), len(self.ok))
-            sys.exit(2)
+                    msg_extra = 'WARN: {}: {}\nOK: {}: {}'.format(
+                        len(self.warn), self.str_message(self.warn),
+                        len(self.ok), self.str_message(self.ok))
+            exit = 2
         elif len(self.error) >= args.warn_probes:
             if self.verbose > 0:
-                print "ERROR: %d: %s" % (len(self.error), self.str_message(self.error))
+                msg = 'ERROR: {}: {}'.format(
+                    len(self.error), self.str_message(self.error), perfdata)
                 if self.verbose > 1:
-                    print "WARN: %d: %s" % (len(self.warn), self.str_message(self.warn))
-                    print "OK: %d: %s" % (len(self.ok), self.str_message(self.ok))
-
-            else:
-                print 'ERROR: {}, WARN: {}, OK: {}'.format(
-                        len(self.error), len(self.warn), len(self.ok))
-            sys.exit(1)
+                    msg_extra = 'WARN: {}: {}\nOK: {}: {}'.format(
+                        len(self.warn), self.str_message(self.warn),
+                        len(self.ok), self.str_message(self.ok))
+            exit = 1
         elif len(self.warn) >= args.warn_probes:
             if self.verbose > 0:
-                print "WARN: %d: %s" % (len(self.warn), self.str_message(self.warn))
-                print "ERROR: %d: %s" % (len(self.error), self.str_message(self.error))
+                msg = 'WARN: {}: {}'.format(
+                    len(self.error), self.str_message(self.error), perfdata)
+                msg_extra = 'ERROR: {}: {}'.format(
+                        len(self.error), self.str_message(self.error))
                 if self.verbose > 1:
-                    print "OK: %d: %s" % (len(self.ok), self.str_message(self.ok))
-            else:
-                print 'ERROR: {}, WARN: {}, OK: {}'.format(
-                        len(self.error), len(self.warn), len(self.ok))
-            sys.exit(1)
+                    msg_extra += '\nOK {}: {}'.format(
+                            len(self.ok), self.str_message(self.ok))
+            exit = 1
         else:
             if self.verbose > 1:
-                print "OK: %d: %s" % (len(self.ok), self.str_message(self.ok))
-                print "WARN: %d: %s" % (len(self.warn), self.str_message(self.warn))
-                print "ERROR: %d: %s" % (len(self.error), self.str_message(self.error))
-            else:
-                print 'ERROR: {}, WARN: {}, OK: {}'.format(
-                        len(self.error), len(self.warn), len(self.ok))
-            sys.exit(0)
+                msg = 'OK: {}: {}'.format(
+                        len(self.ok), self.str_message(self.ok))
+                msg_extra = 'WARN: {}: {}\nERROR: {}: {}'.format(
+                    len(self.warn), self.str_message(self.warn),
+                    len(self.error), self.str_message(self.error))
+            exit = 0
+        if args.perfdata:
+            perfdata_msg = 'OK={};{};{}'.format(
+                    len(self.ok), args.warn_probes, args.crit_probes)
+            perfdata_extra_msg = 'WARN={};{};{}\nERROR={};{};{}'.format(
+                    len(self.warn), args.warn_probes, args.crit_probes,
+                    len(self.error), args.warn_probes, args.crit_probes)
+            print '{} | {}\n{} | {}'.format(
+                    msg, perfdata_msg, msg_extra, perfdata_extra_msg)
+        else:
+            print '{}\n{}'.format(msg, msg_extra)
+        sys.exit(exit)
 
