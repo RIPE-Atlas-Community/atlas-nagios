@@ -134,7 +134,7 @@ class ProbeMessage:
             len(self.error)
             if self.verbose > 0:
                 msg = 'ERROR: {}: {}'.format(
-                    len(self.error), self.str_message(self.error), perfdata)
+                    len(self.error), self.str_message(self.error))
                 if self.verbose > 1:
                     msg_extra = 'WARN: {}: {}\nOK: {}: {}'.format(
                         len(self.warn), self.str_message(self.warn),
@@ -143,7 +143,7 @@ class ProbeMessage:
         elif len(self.error) >= args.warn_probes:
             if self.verbose > 0:
                 msg = 'ERROR: {}: {}'.format(
-                    len(self.error), self.str_message(self.error), perfdata)
+                    len(self.error), self.str_message(self.error))
                 if self.verbose > 1:
                     msg_extra = 'WARN: {}: {}\nOK: {}: {}'.format(
                         len(self.warn), self.str_message(self.warn),
@@ -152,7 +152,7 @@ class ProbeMessage:
         elif len(self.warn) >= args.warn_probes:
             if self.verbose > 0:
                 msg = 'WARN: {}: {}'.format(
-                    len(self.error), self.str_message(self.error), perfdata)
+                    len(self.error), self.str_message(self.error))
                 msg_extra = 'ERROR: {}: {}'.format(
                         len(self.error), self.str_message(self.error))
                 if self.verbose > 1:
