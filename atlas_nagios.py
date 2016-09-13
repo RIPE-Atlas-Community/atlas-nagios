@@ -31,8 +31,8 @@ import sys
 
 #remove errors regarding SSLContext for old versions of python
 if sys.version_info < (2,7,9):
-    import urllib3
-    urllib3.disable_warnings()
+    from requests.packages.urllib3 import disable_warnings
+    disable_warnings()
 def arg_parse():
     """Parse arguments"""
     parser = argparse.ArgumentParser(description=__doc__)
