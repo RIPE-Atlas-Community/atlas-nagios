@@ -27,6 +27,7 @@ import argparse
 import requests
 import json
 import pprint
+from ripe.atlas.cousteau import AtlasLatestRequest
 
 from measurements import *
 
@@ -54,26 +55,25 @@ def get_response(url):
 
 
 def get_measurements(measurement_id, key=None):
-    '''Fetch a measuerment with it=measurement_id'''
-    '''api changed probably this one :
-    https://atlas.ripe.net/api/internal/measurement-last/%s/
-    however this one has less junk
-    https://atlas.ripe.net/api/internal/measurement-latest/%s/
-    '''
-    #url = "https://atlas.ripe.net/api/internal/measurement-latest/%s/" % measurement_id
-    url = "https://atlas.ripe.net/api/v1/measurement-latest/%s/" % measurement_id
-    if (key):
-        url = url + "?key=%s" % key
-    return get_response(url)
+    '''Fetch a measuerment with id=measurement_id'''
+
+    kwargs = {"msm_id": measurement_id}
+    if key:
+        kwargs["key"] = key
+
+    is_success, response = AtlasLatestRequest(**kwargs).create()
+
+    if not is_success:
+        print "Unexpected error: %s".format(response)
+        sys.exit(3)
+
+    return response
 
 
-def parse_measurements(measurements, measurement_type, message):
+def parse_measurements(measurements, measurement_type):
     '''Parse the measuerment'''
     parsed_measurements = []
-    for probe_id, measurement in measurements.items():
-        if measurement == None:
-            message.add_error(probe_id, "No data")
-            continue
+    for measurement in measurements:
         parsed_measurements.append(
             {
                 'a': MeasurmentDnsA,
@@ -86,7 +86,7 @@ def parse_measurements(measurements, measurement_type, message):
                 'http': MeasurmentHTTP,
                 'ping': MeasurmentPing,
                 'ssl': MeasurmentSSL,
-            }.get(measurement_type.lower(), Measurment)(probe_id, measurement[0])
+            }.get(measurement_type.lower(), Measurment)(measurement["prb_id"], measurement)
         )
     return parsed_measurements
 
