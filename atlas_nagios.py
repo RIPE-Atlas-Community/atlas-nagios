@@ -63,8 +63,7 @@ def main():
     args = arg_parse()
     message = ProbeMessage(args.verbose, args.perfdata)
     measurements =  get_measurements(args.measurement_id, args.key)
-    parsed_measurements = parse_measurements(
-            measurements, args.name, message)
+    parsed_measurements = parse_measurements(measurements, args.name)
     check_measurements(parsed_measurements, args, message)
     if len(measurements) < args.crit_probes:
         print 'ERROR: only recived {} messages'.format(len(measurements))
