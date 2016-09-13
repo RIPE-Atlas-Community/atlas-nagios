@@ -27,7 +27,12 @@ import logging
 from messages import ProbeMessage
 from measurements import *
 from utils import get_response,get_measurements,check_measurements, parse_measurements
+import sys
 
+#remove errors regarding SSLContext for old versions of python
+if sys.version_info < (2,7,9):
+    import urllib3
+    urllib3.disable_warnings()
 def arg_parse():
     """Parse arguments"""
     parser = argparse.ArgumentParser(description=__doc__)
